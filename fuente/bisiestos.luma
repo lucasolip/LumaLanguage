@@ -1,0 +1,12 @@
+bisiesto(año):
+	devuelve (año modulo 4 igual 0) y (año modulo 100 distinto 0) o (año modulo 400 igual 0)
+fin
+
+comando = lee
+mientras comando distinto “salir”:
+	si bisiesto(comando):
+		escribe “Año bisiesto\n”
+	sino:
+		escribe “Año ordinario\n”
+	fin
+fin

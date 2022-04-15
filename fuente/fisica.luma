@@ -1,0 +1,28 @@
+posX = 0.0
+posY = 0.0
+velX = 2.0
+velY = -1.0
+atractorX = -1.0
+atractorY = -1.0
+
+// Integración de Euler
+actualizarEstado:
+    fuerzaX = atractorX - posX
+    fuerzaY = atractorY - posY
+    velX = velX + fuerzaX
+    velY = velY + fuerzaY
+    posX = posX + velX
+    posY = posY + velY
+fin
+mostrarEstado:
+    escribe posX + ", " + posY + "\n"
+fin
+
+escribe “Introduzca el número de pasos de la simulación: ”
+pasos = lee
+escribe “\n”
+mientras pasos menor 100:
+    actualizarEstado
+    mostrarEstado
+    pasos = pasos + 1
+fin
