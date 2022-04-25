@@ -50,10 +50,10 @@ assignment : IDENTIFIER '=' expression {insert($1, Unknown); printf("Declaració
 functionCall : WRITE expression | variable;
 functionHeaderOpen : IDENTIFIER '(' {$$ = $1; insert($1, Function); pushContext();};
 functionHeader : 	IDENTIFIER ':' {$$ = $1; insert($1, Function); pushContext();} | 
-					functionHeaderOpen parameter ')' ':' {$$ = $1;};
+					functionHeaderOpen parameter ')' ':' {$$ = $1; lastFunctionArguments(currentContextVariables());};
 functionDefinition : functionHeader instructions END {popContext(); printf("Definición de función %s\n", $1);} | 
 			functionHeader instructions error {printf("en definición de función ¿Falta un fin?");};
-variable : 	IDENTIFIER {$$ = $1;} | 
+variable : 	IDENTIFIER {$$ = $1; insert($1, Unknown);} | 
 			functionHeaderOpen parameter ')' {$$ = $1; popContext(); pop(1);} | 
 			functionHeaderOpen parameter error {$$ = $1; popContext(); pop(1); printf("en llamada a función ¿Falta un paréntesis?");};
 //definingParameter : definingParameter ',' variable {$$ = $1;} | variable {$$ = $1;};
@@ -81,6 +81,8 @@ operand : FLOAT | INTEGER | STRING | CHARACTER | variable | READ | VERDADERO | F
 int main(int argc, char** argv) {
   if (argc>1) yyin=fopen(argv[1],"r");
   yyparse();
+  printf("\n");
+  printStack();
 }
 
 void yyerror(char* mens) {

@@ -1473,7 +1473,7 @@ yyreduce:
 
   case 18:
 #line 53 "analizadorsintactico.y"
-                                                                             {(yyval.identifier) = (yyvsp[-3].identifier);}
+                                                                             {(yyval.identifier) = (yyvsp[-3].identifier); lastFunctionArguments(currentContextVariables());}
 #line 1478 "analizadorsintactico.tab.c"
     break;
 
@@ -1491,7 +1491,7 @@ yyreduce:
 
   case 21:
 #line 56 "analizadorsintactico.y"
-                           {(yyval.identifier) = (yyvsp[0].identifier);}
+                           {(yyval.identifier) = (yyvsp[0].identifier); insert((yyvsp[0].identifier), Unknown);}
 #line 1496 "analizadorsintactico.tab.c"
     break;
 
@@ -1824,6 +1824,8 @@ yyreturn:
 int main(int argc, char** argv) {
   if (argc>1) yyin=fopen(argv[1],"r");
   yyparse();
+  printf("\n");
+  printStack();
 }
 
 void yyerror(char* mens) {
