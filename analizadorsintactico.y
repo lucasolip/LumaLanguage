@@ -1,11 +1,24 @@
 %{
 #include <stdio.h>
+#include "symtable.c"
 extern FILE *yyin;   /* declarado en lexico */
 extern int line;   /* lexico le da valores */
 int yydebug=1;       /* modo debug si -t */
 void yyerror(char*); 
 %}
-%token WRITE READ RETURN WHILE IF ELSE END MODULO NOT VERDADERO FALSO FLOAT INTEGER CHARACTER STRING IDENTIFIER NEWINSTRUCTION GREATER LESS EQUALS GREATEREQUAL LESSEQUAL DIFFERENT
+
+%union { char* identifier; float floating; char character; int integer; char* string; }
+%token WRITE READ RETURN WHILE IF ELSE END MODULO NOT VERDADERO FALSO NEWINSTRUCTION GREATER LESS EQUALS GREATEREQUAL LESSEQUAL DIFFERENT
+%token <identifier> IDENTIFIER
+%token <floating> FLOAT
+%token <character> CHARACTER
+%token <integer> INTEGER
+%token <string> STRING
+
+%type <identifier> variable
+%type <identifier> functionHeader
+%type <identifier> functionHeaderOpen
+
 %start program
 
 %left '+' 
@@ -28,25 +41,32 @@ instructions : instruction | instructions NEWINSTRUCTION instruction;
 instruction : 	assignment {printf("Asignación\n");} | 
 		control {printf("Condición\n");} | 
 		loop {printf("Bucle\n");} | 
-		functionDefinition {printf("Definición de función\n");} | 
+		functionDefinition | 
 		functionCall {printf("Llamada a función\n");} | 
 		/* Instrucción vacía */ | 
 		return;
 return : RETURN expression;
-assignment : IDENTIFIER '=' expression;
+assignment : IDENTIFIER '=' expression {insert($1, Unknown); printf("Declaración de variable %s\n", $1);};
 functionCall : WRITE expression | variable;
-functionDefinition : variable ':' instructions END | 
-			variable ':' instructions error {printf("en definición de función ¿Falta un fin?");};
-variable : IDENTIFIER | IDENTIFIER'(' parameter ')' |
-		IDENTIFIER'(' parameter error {printf("en función ¿Falta un paréntesis?");};
+functionHeaderOpen : IDENTIFIER '(' {$$ = $1; insert($1, Function); pushContext();};
+functionHeader : 	IDENTIFIER ':' {$$ = $1; insert($1, Function); pushContext();} | 
+					functionHeaderOpen parameter ')' ':' {$$ = $1;};
+functionDefinition : functionHeader instructions END {popContext(); printf("Definición de función %s\n", $1);} | 
+			functionHeader instructions error {printf("en definición de función ¿Falta un fin?");};
+variable : 	IDENTIFIER {$$ = $1;} | 
+			functionHeaderOpen parameter ')' {$$ = $1; popContext(); pop(1);} | 
+			functionHeaderOpen parameter error {$$ = $1; popContext(); pop(1); printf("en llamada a función ¿Falta un paréntesis?");};
+//definingParameter : definingParameter ',' variable {$$ = $1;} | variable {$$ = $1;};
 parameter : expression | parameter ',' expression;
-control : IF expression ':' instructions ELSE ':' instructions END | IF expression ':' instructions END | 
-		IF expression ':' instructions error {printf("en condición ¿Falta un fin?");} |
-		IF expression ':' instructions ELSE ':' instructions error {printf("en condición ¿Falta un fin?");} |
+controlHeader : IF expression ':' {pushContext();};
+control : controlHeader instructions ELSE ':' instructions END {popContext();} | controlHeader instructions END {popContext();} | 
+		controlHeader instructions error {printf("en condición ¿Falta un fin?");} |
+		controlHeader instructions ELSE ':' instructions error {printf("en condición ¿Falta un fin?");} |
 		IF expression error {printf("en condición ¿Faltan los dos puntos?");} instructions END | 
-		IF expression ':' instructions ELSE error {printf("en condición ¿Faltan los dos puntos?");} instructions END;
-loop : WHILE expression ':' instructions END | 
-	WHILE expression ':' instructions error {printf("en bucle ¿Falta un fin?");} |
+		controlHeader instructions ELSE error {printf("en condición ¿Faltan los dos puntos?");} instructions END;
+loopHeader : WHILE expression ':' {pushContext();};
+loop : loopHeader instructions END {popContext();} | 
+	loopHeader instructions error {popContext(); printf("en bucle ¿Falta un fin?");} |
 	WHILE expression error {printf("en bucle ¿Faltan los dos puntos?");} instructions END ;
 expression : expression EQUALS expression | expression DIFFERENT expression | expression GREATER expression | expression LESS expression | expression GREATEREQUAL expression | expression LESSEQUAL expression | proposition;
 proposition : proposition 'o' andProposition | andProposition;

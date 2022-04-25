@@ -60,24 +60,32 @@ extern int yydebug;
     NOT = 266,
     VERDADERO = 267,
     FALSO = 268,
-    FLOAT = 269,
-    INTEGER = 270,
-    CHARACTER = 271,
-    STRING = 272,
-    IDENTIFIER = 273,
-    NEWINSTRUCTION = 274,
-    GREATER = 275,
-    LESS = 276,
-    EQUALS = 277,
-    GREATEREQUAL = 278,
-    LESSEQUAL = 279,
-    DIFFERENT = 280
+    NEWINSTRUCTION = 269,
+    GREATER = 270,
+    LESS = 271,
+    EQUALS = 272,
+    GREATEREQUAL = 273,
+    LESSEQUAL = 274,
+    DIFFERENT = 275,
+    IDENTIFIER = 276,
+    FLOAT = 277,
+    CHARACTER = 278,
+    INTEGER = 279,
+    STRING = 280
   };
 #endif
 
 /* Value type.  */
 #if ! defined YYSTYPE && ! defined YYSTYPE_IS_DECLARED
-typedef int YYSTYPE;
+union YYSTYPE
+{
+#line 10 "analizadorsintactico.y"
+ char* identifier; float floating; char character; int integer; char* string; 
+
+#line 86 "analizadorsintactico.tab.h"
+
+};
+typedef union YYSTYPE YYSTYPE;
 # define YYSTYPE_IS_TRIVIAL 1
 # define YYSTYPE_IS_DECLARED 1
 #endif
