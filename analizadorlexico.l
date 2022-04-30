@@ -3,6 +3,7 @@
 #include <string.h>
 #include "analizadorsintactico.tab.h"
 int line = 1;
+void yyerror(char*); 
 %}
 
 letter [a-zA-ZáéíóúÁÉÍÓÚñÑ]
@@ -35,6 +36,6 @@ Falso|falso|F			    return FALSO;
 \".*\"|“.*”					{yylval.string=(char*)strdup(yytext);return STRING;};
 {letter}{letdig}*			{yylval.identifier=(char*)strdup(yytext);return IDENTIFIER;};
 (\/\/.*\n)|(\/\*(.|\n)*\*\/)|[ \t]		// ignore
-.						yyerror("Caracter extraño\n");
+.						yyerror("Caracter no válido\n");
 <<EOF>>					return 0;
 %%

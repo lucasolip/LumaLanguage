@@ -79,7 +79,7 @@ extern int yydebug;
 #if ! defined YYSTYPE && ! defined YYSTYPE_IS_DECLARED
 union YYSTYPE
 {
-#line 10 "analizadorsintactico.y"
+#line 39 "analizadorsintactico.y"
  char* identifier; float floating; char character; int integer; char* string; 
 
 #line 86 "analizadorsintactico.tab.h"

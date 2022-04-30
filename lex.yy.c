@@ -531,8 +531,9 @@ char *yytext;
 #include <string.h>
 #include "analizadorsintactico.tab.h"
 int line = 1;
-#line 535 "lex.yy.c"
+void yyerror(char*); 
 #line 536 "lex.yy.c"
+#line 537 "lex.yy.c"
 
 #define INITIAL 0
 
@@ -749,9 +750,9 @@ YY_DECL
 		}
 
 	{
-#line 12 "analizadorlexico.l"
+#line 13 "analizadorlexico.l"
 
-#line 755 "lex.yy.c"
+#line 756 "lex.yy.c"
 
 	while ( /*CONSTCOND*/1 )		/* loops until end-of-file is reached */
 		{
@@ -810,146 +811,146 @@ do_action:	/* This label is used only to access EOF actions. */
 
 case 1:
 YY_RULE_SETUP
-#line 13 "analizadorlexico.l"
+#line 14 "analizadorlexico.l"
 return WRITE;
 	YY_BREAK
 case 2:
 YY_RULE_SETUP
-#line 14 "analizadorlexico.l"
+#line 15 "analizadorlexico.l"
 return READ;
 	YY_BREAK
 case 3:
 /* rule 3 can match eol */
 YY_RULE_SETUP
-#line 15 "analizadorlexico.l"
+#line 16 "analizadorlexico.l"
 {line++; return NEWINSTRUCTION;}
 	YY_BREAK
 case 4:
 YY_RULE_SETUP
-#line 16 "analizadorlexico.l"
+#line 17 "analizadorlexico.l"
 return RETURN;
 	YY_BREAK
 case 5:
 YY_RULE_SETUP
-#line 17 "analizadorlexico.l"
+#line 18 "analizadorlexico.l"
 return WHILE;
 	YY_BREAK
 case 6:
 YY_RULE_SETUP
-#line 18 "analizadorlexico.l"
+#line 19 "analizadorlexico.l"
 return IF;
 	YY_BREAK
 case 7:
 YY_RULE_SETUP
-#line 19 "analizadorlexico.l"
+#line 20 "analizadorlexico.l"
 return ELSE;
 	YY_BREAK
 case 8:
 YY_RULE_SETUP
-#line 20 "analizadorlexico.l"
+#line 21 "analizadorlexico.l"
 return END;
 	YY_BREAK
 case 9:
 YY_RULE_SETUP
-#line 21 "analizadorlexico.l"
+#line 22 "analizadorlexico.l"
 return yytext[0];
 	YY_BREAK
 case 10:
 YY_RULE_SETUP
-#line 22 "analizadorlexico.l"
+#line 23 "analizadorlexico.l"
 return MODULO;
 	YY_BREAK
 case 11:
 YY_RULE_SETUP
-#line 23 "analizadorlexico.l"
+#line 24 "analizadorlexico.l"
 return NOT;
 	YY_BREAK
 case 12:
 YY_RULE_SETUP
-#line 24 "analizadorlexico.l"
+#line 25 "analizadorlexico.l"
 return GREATER;
 	YY_BREAK
 case 13:
 YY_RULE_SETUP
-#line 25 "analizadorlexico.l"
+#line 26 "analizadorlexico.l"
 return LESS;
 	YY_BREAK
 case 14:
 YY_RULE_SETUP
-#line 26 "analizadorlexico.l"
+#line 27 "analizadorlexico.l"
 return EQUALS;
 	YY_BREAK
 case 15:
 YY_RULE_SETUP
-#line 27 "analizadorlexico.l"
+#line 28 "analizadorlexico.l"
 return DIFFERENT;
 	YY_BREAK
 case 16:
 YY_RULE_SETUP
-#line 28 "analizadorlexico.l"
+#line 29 "analizadorlexico.l"
 return GREATEREQUAL;
 	YY_BREAK
 case 17:
 YY_RULE_SETUP
-#line 29 "analizadorlexico.l"
+#line 30 "analizadorlexico.l"
 return LESSEQUAL;
 	YY_BREAK
 case 18:
 YY_RULE_SETUP
-#line 30 "analizadorlexico.l"
+#line 31 "analizadorlexico.l"
 return VERDADERO;
 	YY_BREAK
 case 19:
 YY_RULE_SETUP
-#line 31 "analizadorlexico.l"
+#line 32 "analizadorlexico.l"
 return FALSO;
 	YY_BREAK
 case 20:
 YY_RULE_SETUP
-#line 32 "analizadorlexico.l"
+#line 33 "analizadorlexico.l"
 {yylval.floating=atof(yytext);return FLOAT;};
 	YY_BREAK
 case 21:
 YY_RULE_SETUP
-#line 33 "analizadorlexico.l"
+#line 34 "analizadorlexico.l"
 {yylval.integer=atoi(yytext);return INTEGER;};
 	YY_BREAK
 case 22:
 YY_RULE_SETUP
-#line 34 "analizadorlexico.l"
+#line 35 "analizadorlexico.l"
 {yylval.character=yytext[1];return CHARACTER;};
 	YY_BREAK
 case 23:
 YY_RULE_SETUP
-#line 35 "analizadorlexico.l"
+#line 36 "analizadorlexico.l"
 {yylval.string=(char*)strdup(yytext);return STRING;};
 	YY_BREAK
 case 24:
 YY_RULE_SETUP
-#line 36 "analizadorlexico.l"
+#line 37 "analizadorlexico.l"
 {yylval.identifier=(char*)strdup(yytext);return IDENTIFIER;};
 	YY_BREAK
 case 25:
 /* rule 25 can match eol */
 YY_RULE_SETUP
-#line 37 "analizadorlexico.l"
+#line 38 "analizadorlexico.l"
 // ignore
 	YY_BREAK
 case 26:
 YY_RULE_SETUP
-#line 38 "analizadorlexico.l"
-yyerror("Caracter extraño\n");
+#line 39 "analizadorlexico.l"
+yyerror("Caracter no válido\n");
 	YY_BREAK
 case YY_STATE_EOF(INITIAL):
-#line 39 "analizadorlexico.l"
+#line 40 "analizadorlexico.l"
 return 0;
 	YY_BREAK
 case 27:
 YY_RULE_SETUP
-#line 40 "analizadorlexico.l"
+#line 41 "analizadorlexico.l"
 ECHO;
 	YY_BREAK
-#line 953 "lex.yy.c"
+#line 954 "lex.yy.c"
 
 	case YY_END_OF_BUFFER:
 		{
@@ -1952,6 +1953,6 @@ void yyfree (void * ptr )
 
 #define YYTABLES_NAME "yytables"
 
-#line 40 "analizadorlexico.l"
+#line 41 "analizadorlexico.l"
 
 
