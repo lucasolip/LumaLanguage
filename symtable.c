@@ -1,37 +1,34 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-
-enum Type {
-    Function,
-    Integer,
-    Float,
-    Character,
-    String,
-    Bool,
-    Unknown,
-    ContextSeparator
-};
+#include "types.c"
 
 struct Node {
     char* name;
     enum Type type;
+    int address;
     int numArguments;
     struct Node* next;
+    int fromFunction;
+    enum Type returnType;
 };
 
 struct Node* top = NULL;
 
 int contains(char* name);
 
-void insert(char* name, enum Type type) {
-    if (contains(name)) return;
+struct Node* insert(char* name, enum Type type, int address, int inFunction) {
+    if (contains(name)) return NULL;
     struct Node* newNode = (struct Node*)malloc(sizeof(struct Node));
     newNode->name = name;
     newNode->type = type;
+    newNode->address = address;
     newNode->numArguments = -1;
+    newNode->fromFunction = inFunction;
+    newNode->returnType = Void;
     newNode->next = top;
     top = newNode;
+    return top;
 }
 
 int contains(char* name) {
@@ -41,6 +38,15 @@ int contains(char* name) {
         current = current->next;
     }
     return 0;
+}
+
+struct Node* find(char* name) {
+    struct Node* current = top;
+    while (current != NULL) {
+        if (strcmp(name, current->name) == 0 && name[0] != '-') return current;
+        current = current->next;
+    }
+    return NULL;
 }
 
 void pop(int numNodes) {
@@ -68,20 +74,30 @@ int lastFunctionArguments(int n) {
     return 0;
 }
 
+int setFunctionType(enum Type type) {
+    struct Node* current = top;
+    while (current != NULL) {
+        if (current->type == Function) {
+            current->returnType = type;
+            return 1;
+        }
+        current = current->next;
+    }
+    printf("No se encontró ninguna función\n");
+    return 0;
+}
+
 void pushContext() {
-    insert("-", ContextSeparator);
-    printf("Context push\n");
+    insert("-", ContextSeparator, 0, 0);
 }
 
 void popContext() {
     struct Node* current = NULL;
     while (top != NULL && top->type != ContextSeparator) {
-        printf("Eliminado el nodo %s\n", top->name);
         current = top;
         top = top->next;
         free(current);
     }
-    printf("Context pop\n");
     if (top != NULL) {
         current = top;
         top = top->next;
@@ -112,7 +128,7 @@ int getNumArguments(char* functionName) {
 void printStack() {
     struct Node* current = top;
     while (current != NULL) {
-        printf("%s, %d, %d\n", current->name, current->type, current->numArguments);
+        printf("%s, %d, %d, %d\n", current->name, current->type, current->address, current->numArguments);
         current = current->next;
     }
 }

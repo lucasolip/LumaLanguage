@@ -1,7 +1,7 @@
-suma(primerSumando, segundoSumando):
+suma(entero primerSumando, entero segundoSumando):
 	devuelve primerSumando + segundoSumando
 fin
 
 si suma(2, 3) igual (2 + 3):
-	escribe "Las sumas son iguales"
+	escribe "Las sumas son iguales\n"
 fin

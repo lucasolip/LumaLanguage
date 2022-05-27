@@ -69,12 +69,632 @@
 #line 1 "analizadorsintactico.y"
 
 #include <stdio.h>
+#include <string.h>
 #include "symtable.c"
+#include "textList.c"
+#include "indexStack.c"
+
+struct RegisterNode {
+    int* intRegisters;
+	int* floatRegisters;
+    struct RegisterNode* next;
+};
+
 extern FILE *yyin;   /* declarado en lexico */
 extern int line;   /* lexico le da valores */
 int yydebug=1;       /* modo debug si -t */
-int argumentCount = 0; // Variable auxiliar para contar argumentos de llamadas a funciones 
-void yyerror(char*); 
+int argumentCount = 0; // Variable auxiliar para contar argumentos de llamadas a funciones
+int *intRegisters;
+int *floatRegisters;
+int baseAddress = 73728;
+int label = 1;
+int localVariablesSize = 0;
+int argumentVariablesSize = 0;
+struct ListNode* instructionsList = NULL;
+struct IndexNode* ifStack;
+struct IndexNode* whileStack;
+struct RegisterNode* topRegisters = NULL;
+
+
+
+void insertRegisters() {
+	struct RegisterNode *newNode = (struct RegisterNode *)malloc(sizeof(struct RegisterNode));
+    newNode->intRegisters = (int *)malloc(sizeof(int)*7);
+	intRegisters = newNode->intRegisters;
+	for (int i = 0; i < 8; i++) {
+		intRegisters[i] = 0;
+	}
+	newNode->floatRegisters = (int *)malloc(sizeof(int)*4);
+	floatRegisters = newNode->floatRegisters;
+	for (int i = 0; i < 4; i++) {
+		floatRegisters[i] = 0;
+	}
+    newNode->next = topRegisters;
+    topRegisters = newNode;
+}
+
+void removeRegisters() {
+	free(topRegisters->intRegisters);
+	free(topRegisters->floatRegisters);
+    free(topRegisters);
+    topRegisters = topRegisters->next;
+	intRegisters = topRegisters->intRegisters;
+	floatRegisters = topRegisters->floatRegisters;
+}
+
+void yyerror(char*);
+
+void pushRegisters() {
+	int stackSize = 0;
+	for (int i = 0; i < 5; i++) {
+		if (intRegisters[i] == 1) stackSize++;
+	}
+	for (int i = 0; i < 4; i++) {
+		if (floatRegisters[i] == 1) stackSize++;
+	}
+	char line[32];
+	snprintf(line, sizeof(line), "\tR7 = R7 - %d;\n", stackSize*4);
+	addText(line, &instructionsList);
+	int stackIndex = 0;
+	for (int i = 0; i < 5; i++) {
+		if (intRegisters[i] == 1) {
+			snprintf(line, sizeof(line), "\tP(R7 + %d) = R%d;\n", stackIndex*4, i);
+			addText(line, &instructionsList);
+			stackIndex++;
+		}
+	}
+	for (int i = 0; i < 5; i++) {
+		if (floatRegisters[i] == 1) {
+			snprintf(line, sizeof(line), "\tP(R7 + %d) = RR%d;\n", stackIndex*4, i);
+			addText(line, &instructionsList);
+			stackIndex++;
+		}
+	}
+	insertRegisters();
+}
+
+void popRegisters() {
+	removeRegisters();
+	int stackSize = 0;
+	for (int i = 0; i < 5; i++) {
+		if (intRegisters[i] == 1) stackSize++;
+	}
+	for (int i = 0; i < 4; i++) {
+		if (floatRegisters[i] == 1) stackSize++;
+	}
+	char line[32];
+	
+	int stackIndex = 0;
+	for (int i = 0; i < 5; i++) {
+		if (intRegisters[i] == 1) {
+			snprintf(line, sizeof(line), "\tR%d = P(R7 + %d);\n", i, stackIndex*4);
+			addText(line, &instructionsList);
+			stackIndex++;
+		}
+	}
+	for (int i = 0; i < 5; i++) {
+		if (floatRegisters[i] == 1) {
+			snprintf(line, sizeof(line), "\tRR%d = P(R7 + %d);\n", i, stackIndex*4);
+			addText(line, &instructionsList);
+			stackIndex++;
+		}
+	}
+	snprintf(line, sizeof(line), "\tR7 = R7 + %d;\n", stackSize*4);
+	addText(line, &instructionsList);
+	
+}
+
+int getRegisterInt() {
+	for (int i = 0; i < 7; i++) {
+		if (intRegisters[i] == 0) {
+			intRegisters[i] = 1;
+			return i;
+		}
+	}
+	printf("Nos quedamos sin registros enteros\n");
+	return 0;
+}
+
+void freeRegisterInt(int reg) {
+	intRegisters[reg] = 0;
+}
+
+int getRegisterFloat() {
+	for (int i = 0; i < 7; i++) {
+		if (floatRegisters[i] == 0) {
+			floatRegisters[i] = 1;
+			return i;
+		}
+	}
+	printf("Nos quedamos sin registros flotantes\n");
+	return 0;
+}
+
+void freeRegisterFloat(int reg) {
+	floatRegisters[reg] = 0;
+}
+
+int getAddress(struct Variable v) {
+	switch (v.type) {
+		case Integer:
+			baseAddress -= 4;
+			break;
+		case Character:
+			baseAddress -= 1;
+			break;
+		case Float:
+			baseAddress -= 4;
+			break;
+		case Bool:
+			baseAddress -= 1;
+			break;
+		default:
+			baseAddress -= 4;
+			break;
+	}
+	return baseAddress;
+}
+
+int getLabel() {
+	return label++;
+}
+
+enum Type getType(char* typeString) {
+	if (strcmp(typeString, "entero") == 0) return Integer;
+	else if (strcmp(typeString, "decimal") == 0) return Float;
+	else if (strcmp(typeString, "caracter") == 0) return Character;
+	else if (strcmp(typeString, "booleano") == 0) return Bool;
+	else return Void;
+}
+
+char getTypeLetter(enum Type type) {
+	char regType = 'P';
+	switch (type) {
+		case Integer:
+			regType = 'I';
+			break;
+		case Character:
+			regType = 'U';
+			break;
+		case Float:
+			regType = 'F';
+			break;
+		case Bool:
+			regType = 'U';
+			break;
+	}
+	return regType;
+}
+
+void writeStaticZone() {
+	if (!staticZoneWritten) {
+		staticZoneWritten = 1;
+		addTextAtPos("STAT(0)\n", 2, &instructionsList);
+		addTextAtPos("CODE(0)\n", 3, &instructionsList);
+		staticPosition = 2;
+		functionPosition += 2;
+		beginningFunction += 2;
+	}
+	staticPosition++;
+	functionPosition++;
+	beginningFunction++;
+}
+
+struct Variable writeRegisterInt(int immediate) {
+	struct Variable reg;
+	reg.reg = getRegisterInt();
+	reg.type = Integer;
+	char line[32];
+	snprintf(line, sizeof(line), "\tR%d = %d;\n", reg.reg, immediate);
+	addText(line, &instructionsList);
+	return reg;
+}
+
+struct Variable writeRegisterChar(char immediate) {
+	struct Variable reg;
+	reg.reg = getRegisterInt();
+	reg.type = Character;
+	char line[32];
+	snprintf(line, sizeof(line), "\tR%d = %c;\n", reg.reg, immediate);
+	addText(line, &instructionsList);
+	return reg;
+}
+
+struct Variable writeRegisterBool(int immediate) {
+	struct Variable reg;
+	reg.reg = getRegisterInt();
+	reg.type = Bool;
+	char line[32];
+	snprintf(line, sizeof(line), "\tR%d = %d;\n", reg.reg, immediate);
+	addText(line, &instructionsList);
+	return reg;
+}
+
+struct Variable writeRegisterFloat(float immediate) {
+	struct Variable reg;
+	reg.reg = getRegisterFloat();
+	reg.type = Float;
+	char line[32];
+	snprintf(line, sizeof(line), "\tRR%d = %f;\n", reg.reg, immediate);
+	addText(line, &instructionsList);
+	return reg;
+}
+
+void writeBeforeRegister(struct Variable reg, char operation) {
+	if (operation == '~' && reg.type != Bool) {
+		yyerror("Operación inválida para tipo no booleano");
+		exit(1);
+	}
+	if (operation == '-' && !(reg.type == Integer || reg.type == Float)) {
+		yyerror("Operación inválida para tipo no numérico");
+		exit(1);
+	}
+	char line[32];
+	snprintf(line, sizeof(line), "\tR%d = %cR%d;\n", reg.reg, operation, reg.reg);
+	addText(line, &instructionsList);
+}
+
+struct Variable writeOperation(struct Variable leftReg, struct Variable rightReg, char* operation) {
+	char line[32];
+	int isBooleanOp = strcmp(operation, "&") == 0 || strcmp(operation, "|") == 0;
+	int isComparison = strcmp(operation, "<") == 0 || strcmp(operation, ">") == 0 || 
+						strcmp(operation, "==") == 0 || strcmp(operation, "!=") == 0 || 
+						strcmp(operation, "<=") == 0 || strcmp(operation, ">=") == 0;
+	// Si hay algún caracter
+	if (leftReg.type == Character || rightReg.type == Character) {
+		yyerror("El tipo caracter no se puede operar");
+		exit(1);
+	}
+	// Si hay algún booleano
+	if (leftReg.type == Bool || rightReg.type == Bool) {
+		if (isBooleanOp || isComparison) {
+			snprintf(line, sizeof(line), "\tR%d = R%d %s R%d;\n", leftReg.reg, leftReg.reg, operation, rightReg.reg);
+			freeRegisterInt(rightReg.reg);
+			addText(line, &instructionsList);
+			return leftReg;
+		} else {
+			yyerror("Operación inválida para el tipo booleano");
+			exit(1);
+		}
+	}
+	// En cualquier otro caso, son numéricos
+	if (isBooleanOp) {
+		yyerror("Operación inválida para un tipo numérico");
+		exit(1);
+	}
+	if (strcmp(operation, "%") == 0 && (leftReg.type != Integer || rightReg.type != Integer)) {
+		yyerror("Operación inválida para el tipo decimal");
+		exit(1);
+	}
+	// Si los dos son del mismo tipo
+	if (leftReg.type == rightReg.type) {
+		if (leftReg.type == Integer) {
+			snprintf(line, sizeof(line), "\tR%d = R%d %s R%d;\n", leftReg.reg, leftReg.reg, operation, rightReg.reg);
+			freeRegisterInt(rightReg.reg);
+			addText(line, &instructionsList);
+			if (isComparison) leftReg.type = Bool;
+			return leftReg;
+		} else if (leftReg.type == Float) {
+			if (isComparison) {
+				freeRegisterFloat(leftReg.reg);
+				int newBoolean = getRegisterInt();
+				snprintf(line, sizeof(line), "\tR%d = RR%d %s RR%d;\n", newBoolean, leftReg.reg, operation, rightReg.reg);
+				freeRegisterFloat(leftReg.reg);
+				freeRegisterFloat(rightReg.reg);
+				leftReg.type = Bool;
+				leftReg.reg = newBoolean;
+				addText(line, &instructionsList);
+				return leftReg;
+			} else {
+				snprintf(line, sizeof(line), "\tRR%d = RR%d %s RR%d;\n", leftReg.reg, leftReg.reg, operation, rightReg.reg);
+				freeRegisterFloat(rightReg.reg);
+				addText(line, &instructionsList);
+				return leftReg;
+			}
+		}
+	} else if (leftReg.type == Float) {
+		if (isComparison) {
+			rightReg.type = Bool;
+			snprintf(line, sizeof(line), "\tR%d = RR%d %s R%d;\n", rightReg.reg, leftReg.reg, operation, rightReg.reg);
+			freeRegisterFloat(leftReg.reg);
+			addText(line, &instructionsList);
+			return rightReg;
+		} else {
+			snprintf(line, sizeof(line), "\tRR%d = RR%d %s R%d;\n", leftReg.reg, leftReg.reg, operation, rightReg.reg);
+			freeRegisterInt(rightReg.reg);
+			addText(line, &instructionsList);
+			return leftReg;
+		}
+		
+	} else if (rightReg.type == Float) {
+		if (isComparison) {
+			leftReg.type = Bool;
+			snprintf(line, sizeof(line), "\tR%d = R%d %s RR%d;\n", leftReg.reg, leftReg.reg, operation, rightReg.reg);
+			freeRegisterFloat(rightReg.reg);
+			addText(line, &instructionsList);
+			return leftReg;
+		} else {
+			snprintf(line, sizeof(line), "\tRR%d = R%d %s RR%d;\n", rightReg.reg, leftReg.reg, operation, rightReg.reg);
+			freeRegisterInt(leftReg.reg);
+			addText(line, &instructionsList);
+			return rightReg;
+		}
+	}
+	return leftReg;
+}
+
+void writeAssignment(char* varName, struct Variable v) {
+	if (v.type == Void) {
+		printf("Aviso: El tipo que se desea asignar está vacío, no se asignará nada.\n");
+		return;
+	}
+	struct Node* var = find(varName);
+	int address;
+	char regType = getTypeLetter(v.type);
+	char line[32];
+	if (var != NULL) {
+		address = var->address;
+		if (var->fromFunction) {
+			if (v.type == Float) {
+				snprintf(line, sizeof(line), "\t%c(R6 + %d) = RR%d;\n", regType, address, v.reg);
+				freeRegisterFloat(v.reg);
+			} else {
+				snprintf(line, sizeof(line), "\t%c(R6 + %d) = R%d;\n", regType, address, v.reg);
+				freeRegisterInt(v.reg);
+			}
+		} else {
+			if (v.type == Float) {
+				snprintf(line, sizeof(line), "\t%c(%d) = RR%d;\n", regType, address, v.reg);
+				freeRegisterFloat(v.reg);
+			} else {
+				snprintf(line, sizeof(line), "\t%c(%d) = R%d;\n", regType, address, v.reg);
+				freeRegisterInt(v.reg);
+			}
+		}
+	} else {
+		if (inFunction) {
+			localVariablesSize++;
+			address = -localVariablesSize*4;
+			insert(varName, v.type, address, inFunction);
+			if (v.type == Float) {
+				snprintf(line, sizeof(line), "\t%c(R6 + %d) = RR%d;\n", regType, address, v.reg);
+				freeRegisterFloat(v.reg);
+			} else {
+				snprintf(line, sizeof(line), "\t%c(R6 + %d) = R%d;\n", regType, address, v.reg);
+				freeRegisterInt(v.reg);
+			}
+		} else {
+			address = getAddress(v);
+			insert(varName, v.type, address, inFunction);
+			writeStaticZone();
+			snprintf(line, sizeof(line), (v.type == Float)? "\tDAT(%d, %c, 0.0);\n" : "\tDAT(%d, %c, 0);\n", address, regType);
+			addTextAtPos(line, staticPosition, &instructionsList);
+			if (v.type == Float) {
+				snprintf(line, sizeof(line), "\t%c(%d) = RR%d;\n", regType, address, v.reg);
+				freeRegisterFloat(v.reg);
+			} else {
+				snprintf(line, sizeof(line), "\t%c(%d) = R%d;\n", regType, address, v.reg);
+				freeRegisterInt(v.reg);
+			}
+		}
+	}
+	addText(line, &instructionsList);
+	
+}
+
+void beginFunction(int label) {
+	inFunction = 1;
+	beginningFunction = functionPosition;
+	char line[32];
+	snprintf(line, sizeof(line), "L %d:\n", label);
+	addText(line, &instructionsList);
+	snprintf(line, sizeof(line), "\tR6 = R7;\n");
+	addText(line, &instructionsList);
+}
+
+void endFunction() {
+	char line[32];
+	addText("\tR7 = R6;\n", &instructionsList);
+	addText("\tR6 = P(R7 + 4);\n", &instructionsList);
+	addText("\tR5 = P(R7);\n", &instructionsList);
+	addText("\tGT(R5);\n", &instructionsList);
+	snprintf(line, sizeof(line), "\tR7 = R7 - %d;\n", localVariablesSize*4);
+	addTextAtPos(line, beginningFunction+2, &instructionsList);
+	inFunction = 0;
+}
+
+void beginCallFunction(struct Node* function) {
+	char line[32];
+	pushRegisters();
+	snprintf(line, sizeof(line), "\tR7 = R7 - %d;\n", (function->numArguments+3) * 4);
+	addText(line, &instructionsList);
+}
+
+void addCallFunctionParameter(struct Variable v) {
+	char line[32];
+	char letter = getTypeLetter(v.type);
+	char* preregister = (v.type == Float)? "RR" : "R";
+	snprintf(line, sizeof(line), "\t%c(R7 + %d) = %s%d;\n", letter, (argumentCount+2)*4, preregister, v.reg);
+	addText(line, &instructionsList);
+	if (v.type == Float) freeRegisterFloat(v.reg);
+	else freeRegisterInt(v.reg);
+}
+
+struct Variable callFunction(struct Node* function) {
+	struct Variable v;
+	v.type = function->returnType;
+	int address = function->address;
+	int label = getLabel();
+	char line[32];
+	addText("\tP(R7+4) = R6;\n", &instructionsList);
+	snprintf(line, sizeof(line), "\tP(R7) = %d;\n", label);
+	addText(line, &instructionsList);
+	snprintf(line, sizeof(line), "\tGT(%d);\n", address);
+	addText(line, &instructionsList);
+	char letter = getTypeLetter(v.type);
+	snprintf(line, sizeof(line), "L %d:\tR5 = R7 + 8;\n", label);
+	addText(line, &instructionsList);
+	snprintf(line, sizeof(line), "\tR7 = R7 + %d;\n", (function->numArguments+3) * 4);
+	addText(line, &instructionsList);
+	popRegisters();
+	if (v.type == Float) {
+		int reg = getRegisterFloat();
+		snprintf(line, sizeof(line), "\tRR%d = %c(R5);\n", reg, letter);
+		v.reg = reg;
+	} else {
+		int reg = getRegisterInt();
+		snprintf(line, sizeof(line), "\tR%d = %c(R5);\n", reg, letter);
+		v.reg = reg;
+	}
+	addText(line, &instructionsList);
+	return v;
+}
+
+struct Variable writeVariableAccess(char* varName) {
+	struct Node* var = find(varName);
+	if (var->type == Function) {
+		return callFunction(var);
+	}
+	struct Variable v;
+	char regType = getTypeLetter(var->type);
+	char line[32];
+	v.type = var->type;
+	int address = var->address;
+	if (var->fromFunction) {
+		if (v.type == Float) {
+			v.reg = getRegisterFloat();
+			snprintf(line, sizeof(line), "\tRR%d = %c(R6 + %d);\n", v.reg, regType, address);
+		} else {
+			v.reg = getRegisterInt();
+			snprintf(line, sizeof(line), "\tR%d = %c(R6 + %d);\n", v.reg, regType, address);
+		}
+	} else {
+		if (v.type == Float) {
+			v.reg = getRegisterFloat();
+			snprintf(line, sizeof(line), "\tRR%d = %c(%d);\n", v.reg, regType, address);
+		} else {
+			v.reg = getRegisterInt();
+			snprintf(line, sizeof(line), "\tR%d = %c(%d);\n", v.reg, regType, address);
+		}
+	}
+	addText(line, &instructionsList);
+	return v;
+}
+
+void writePrint(struct Variable v) {
+	baseAddress -= 3;
+	int address = baseAddress;
+	char letter;
+	switch (v.type) {
+		case Integer:
+			letter = 'i';
+			break;
+		case Float:
+			letter = 'f';
+			break;
+		case Character:
+			letter = 'c';
+			break;
+		default:
+			letter = 'i';
+			break;
+	}
+	writeStaticZone();
+	char line[32];
+	snprintf(line, sizeof(line), "\tSTR(%d, \"%%%c\");\n", address, letter);
+	addTextAtPos(line, staticPosition, &instructionsList);
+	int label = getLabel();
+	if (v.type == Float) freeRegisterFloat(v.reg);
+	else freeRegisterInt(v.reg);
+	snprintf(line, sizeof(line), (v.type == Float)? "\tRR3 = RR%d;\n" : "\tR3 = R%d;\n", v.reg);
+	addText(line, &instructionsList);
+	snprintf(line, sizeof(line), "\tR0 = %d;\n", label);
+	addText(line, &instructionsList);
+	snprintf(line, sizeof(line), "\tR1 = %d;\n", address);
+	addText(line, &instructionsList);
+	addText((v.type == Float)? "\tRR2 = RR3;\n" : "\tR2 = R3;\n", &instructionsList);
+	addText((v.type == Float)? "\tGT(putfloat_);\n" : "\tGT(putf_);\n", &instructionsList);
+	snprintf(line, sizeof(line), "L %d:\n", label);
+	addText(line, &instructionsList);
+}
+
+void writePrintString(char* string) {
+	int size = strlen(string);
+	baseAddress -= strlen(string);
+	int address = baseAddress;
+	writeStaticZone();
+	char line[32+size];
+	snprintf(line, sizeof(line), "\tSTR(%d, %s);\n", address, string);
+	addTextAtPos(line, staticPosition, &instructionsList);
+	int label = getLabel();
+	snprintf(line, sizeof(line), "\tR0 = %d;\n", label);
+	addText(line, &instructionsList);
+	snprintf(line, sizeof(line), "\tR1 = %d;\n", address);
+	addText(line, &instructionsList);
+	addText("\tGT(putf_);\n", &instructionsList);
+	snprintf(line, sizeof(line), "L %d:\n", label);
+	addText(line, &instructionsList);
+}
+
+void writeConditionalStart(struct Variable condition) {
+	if (condition.type != Bool) {
+		yyerror("Las condiciones deben ser booleanas\n");
+		exit(1);
+	}
+	freeRegisterInt(condition.reg);
+	char line[32];
+	insertIndex(getLabel(), &ifStack);
+	snprintf(line, sizeof(line), "\tIF (!R%d) GT(%d);\n", condition.reg, getIndex(&ifStack));
+	addText(line, &instructionsList);
+}
+
+void writeConditionalEnd() {
+	char line[32];
+	snprintf(line, sizeof(line), "L %d:\n", popIndex(&ifStack));
+	addText(line, &instructionsList);
+}
+
+void writeElse() {
+	int label = getLabel();
+	char line[32];
+	snprintf(line, sizeof(line), "\tGT(%d);\n", label);
+	addText(line, &instructionsList);
+	snprintf(line, sizeof(line), "L %d:\n", popIndex(&ifStack));
+	addText(line, &instructionsList);
+	insertIndex(label, &ifStack);
+}
+
+void writeWhileLabel() {
+	char line[32];
+	int startWhileLabel = getLabel();
+	snprintf(line, sizeof(line), "L %d:\n", startWhileLabel);
+	addText(line, &instructionsList);
+	insertIndex(startWhileLabel, &whileStack);
+}
+
+void writeWhileStart(struct Variable condition) {
+	if (condition.type != Bool) {
+		yyerror("Las condiciones deben ser booleanas\n");
+		exit(1);
+	}
+	freeRegisterInt(condition.reg);
+	char line[32];
+	int endWhileLabel = getLabel();
+	snprintf(line, sizeof(line), "\tIF (!R%d) GT(%d);\n", condition.reg, endWhileLabel);
+	addText(line, &instructionsList);
+	int startWhileLabel = popIndex(&whileStack);
+	insertIndex(endWhileLabel, &whileStack);
+	insertIndex(startWhileLabel, &whileStack);
+}
+
+void writeWhileEnd() {
+	char line[32];
+	snprintf(line, sizeof(line), "\tGT(%d);\n", popIndex(&whileStack));
+	addText(line, &instructionsList);
+	snprintf(line, sizeof(line), "L %d:\n", popIndex(&whileStack));
+	addText(line, &instructionsList);
+	insertIndex(label, &ifStack);
+}
 
 void checkExists(char* identifier) {
 	if (!contains(identifier)) {
@@ -82,17 +702,20 @@ void checkExists(char* identifier) {
 		sprintf(errorMessage, "En acceso a variable: La variable %s no existe", identifier);
 		yyerror(errorMessage);
 		free(errorMessage);
+		exit(1);
 	}
 }
 
-void checkArgumentCount(char* functionName) {
-	int expectedArguments = getNumArguments(functionName);
+void checkArgumentCount(struct Node* function) {
+	int expectedArguments = function->numArguments;
+	char* functionName = function->name;
 	if (expectedArguments == -1) {
 		char* errorMessage = (char*)malloc(128 * sizeof(char));
 		sprintf(errorMessage, "En llamada a función: La función %s no existe", functionName);
 		yyerror(errorMessage);
 		free(errorMessage);
 		argumentCount = 0;
+		exit(1);
 		return;
 	}
 	if (argumentCount != expectedArguments) {
@@ -100,11 +723,120 @@ void checkArgumentCount(char* functionName) {
 		sprintf(errorMessage, "En función %s: Se dio %d argumentos y se esperaban %d", functionName, argumentCount, expectedArguments);
 		yyerror(errorMessage);
 		free(errorMessage);
+		exit(1);
 	}
 	argumentCount = 0;
 }
 
-#line 108 "analizadorsintactico.tab.c"
+struct Node* distinguishFunctionCall(char* functionName) {
+	struct Node* f = find(functionName);
+	if (f == NULL) {
+		int label = getLabel();
+		f = insert(functionName, Function, label, inFunction); 
+		pushContext(); 
+		beginFunction(label);
+	} else {
+		beginCallFunction(f);
+	}
+	return f;
+}
+
+void writeReturn(struct Variable v) {
+	setFunctionType(v.type);
+	char line[32];
+	char letter = getTypeLetter(v.type);
+	if (v.type == Float) {
+		snprintf(line, sizeof(line), "\t%c(R6 + 8) = RR%d;\n", letter, v.reg);
+		freeRegisterFloat(v.reg);
+	} else {
+		snprintf(line, sizeof(line), "\t%c(R6 + 8) = R%d;\n", letter, v.reg);
+		freeRegisterInt(v.reg);
+	}
+	addText(line, &instructionsList);
+	addText("\tR7 = R6;\n", &instructionsList);
+	addText("\tR6 = P(R7 + 4);\n", &instructionsList);
+	addText("\tR5 = P(R7);\n", &instructionsList);
+	addText("\tGT(R5);\n", &instructionsList);
+}
+
+struct Variable writeRead(char* readType) {
+	enum Type type = getType(readType);
+	char line[32];
+	int tempRegister0, tempRegister1;
+	struct Variable v;
+	if (type == Integer) {
+		if (intRegisters[0] == 1) {
+			tempRegister0 = getRegisterInt();
+			snprintf(line, sizeof(line), "\tR%d = R0;\n", tempRegister0);
+			addText(line, &instructionsList);
+		}
+		if (intRegisters[1] == 1) {
+			tempRegister1 = getRegisterInt();
+			snprintf(line, sizeof(line), "\tR%d = R1;\n", tempRegister1);
+			addText(line, &instructionsList);
+		}
+		int label = getLabel();
+		snprintf(line, sizeof(line), "\tR0 = %d;\n", label);
+		addText(line, &instructionsList);
+		addText("\tGT(getInteger_);\n", &instructionsList);
+		snprintf(line, sizeof(line), "L %d:\n", label);
+		addText(line, &instructionsList);
+		if (intRegisters[0] == 1) {
+			freeRegisterInt(tempRegister0);
+			snprintf(line, sizeof(line), "\tR0 = R%d;\n", tempRegister0);
+			addText(line, &instructionsList);
+		}
+		v.reg = getRegisterInt();
+		v.type = Integer;
+		snprintf(line, sizeof(line), "\tR%d = R1;\n", v.reg);
+		addText(line, &instructionsList);
+		if (intRegisters[1] == 1) {
+			freeRegisterInt(tempRegister1);
+			snprintf(line, sizeof(line), "\tR1 = R%d;\n", tempRegister1);
+			addText(line, &instructionsList);
+		}
+		return v;
+	} else if (type == Float) {
+		if (intRegisters[0] == 1) {
+			tempRegister0 = getRegisterInt();
+			snprintf(line, sizeof(line), "\tR%d = R0;\n", tempRegister0);
+			addText(line, &instructionsList);
+		}
+		if (floatRegisters[1] == 1) {
+			tempRegister1 = getRegisterFloat();
+			snprintf(line, sizeof(line), "\tRR%d = RR1;\n", tempRegister1);
+			addText(line, &instructionsList);
+		}
+		int label = getLabel();
+		snprintf(line, sizeof(line), "\tR0 = %d;\n", label);
+		addText(line, &instructionsList);
+		addText("\tGT(getFloat_);\n", &instructionsList);
+		snprintf(line, sizeof(line), "L %d:\n", label);
+		addText(line, &instructionsList);
+		if (intRegisters[0] == 1) {
+			freeRegisterInt(tempRegister0);
+			snprintf(line, sizeof(line), "\tR0 = R%d;\n", tempRegister0);
+			addText(line, &instructionsList);
+		}
+		v.reg = getRegisterFloat();
+		v.type = Float;
+		snprintf(line, sizeof(line), "\tRR%d = RR1;\n", v.reg);
+		addText(line, &instructionsList);
+		if (floatRegisters[1] == 1) {
+			freeRegisterFloat(tempRegister1);
+			snprintf(line, sizeof(line), "\tRR1 = RR%d;\n", tempRegister1);
+			addText(line, &instructionsList);
+		}
+		return v;
+	}
+	yyerror("No es posible leer este tipo de dato");
+	exit(0);
+}
+
+
+
+
+#line 840 "analizadorsintactico.tab.c"
 
 # ifndef YY_CAST
 #  ifdef __cplusplus
@@ -174,7 +906,8 @@ extern int yydebug;
     FLOAT = 277,
     CHARACTER = 278,
     INTEGER = 279,
-    STRING = 280
+    STRING = 280,
+    TYPE = 281
   };
 #endif
 
@@ -182,10 +915,11 @@ extern int yydebug;
 #if ! defined YYSTYPE && ! defined YYSTYPE_IS_DECLARED
 union YYSTYPE
 {
-#line 39 "analizadorsintactico.y"
- char* identifier; float floating; char character; int integer; char* string; 
+#line 771 "analizadorsintactico.y"
+ char* identifier; struct Variable reg; struct Node* symbol; 
+			float floating; char character; int integer; char* string; 
 
-#line 189 "analizadorsintactico.tab.c"
+#line 923 "analizadorsintactico.tab.c"
 
 };
 typedef union YYSTYPE YYSTYPE;
@@ -299,7 +1033,7 @@ typedef int yytype_uint16;
 #define YYSIZEOF(X) YY_CAST (YYPTRDIFF_T, sizeof (X))
 
 /* Stored state numbers (used for stacks). */
-typedef yytype_int8 yy_state_t;
+typedef yytype_uint8 yy_state_t;
 
 /* State numbers in computations.  */
 typedef int yy_state_fast_t;
@@ -502,21 +1236,21 @@ union yyalloc
 #endif /* !YYCOPY_NEEDED */
 
 /* YYFINAL -- State number of the termination state.  */
-#define YYFINAL  49
+#define YYFINAL  50
 /* YYLAST -- Last index in YYTABLE.  */
-#define YYLAST   167
+#define YYLAST   222
 
 /* YYNTOKENS -- Number of terminals.  */
-#define YYNTOKENS  37
+#define YYNTOKENS  38
 /* YYNNTS -- Number of nonterminals.  */
-#define YYNNTS  29
+#define YYNNTS  31
 /* YYNRULES -- Number of rules.  */
-#define YYNRULES  77
+#define YYNRULES  81
 /* YYNSTATES -- Number of states.  */
-#define YYNSTATES  127
+#define YYNSTATES  134
 
 #define YYUNDEFTOK  2
-#define YYMAXUTOK   280
+#define YYMAXUTOK   281
 
 
 /* YYTRANSLATE(TOKEN-NUM) -- Symbol number corresponding to TOKEN-NUM
@@ -532,15 +1266,15 @@ static const yytype_int8 yytranslate[] =
        2,     2,     2,     2,     2,     2,     2,     2,     2,     2,
        2,     2,     2,     2,     2,     2,     2,     2,     2,     2,
        2,     2,     2,     2,     2,     2,     2,     2,     2,     2,
-      33,    34,    28,    26,    36,    27,     2,    29,     2,     2,
-       2,     2,     2,     2,     2,     2,     2,     2,    35,     2,
+      34,    35,    29,    27,    37,    28,     2,    30,     2,     2,
+       2,     2,     2,     2,     2,     2,     2,     2,    36,     2,
+       2,    33,     2,     2,     2,     2,     2,     2,     2,     2,
+       2,     2,     2,     2,     2,     2,     2,     2,     2,     2,
+       2,     2,     2,     2,     2,     2,     2,     2,     2,     2,
+       2,     2,     2,     2,     2,     2,     2,     2,     2,     2,
+       2,     2,     2,     2,     2,     2,     2,     2,     2,     2,
        2,    32,     2,     2,     2,     2,     2,     2,     2,     2,
-       2,     2,     2,     2,     2,     2,     2,     2,     2,     2,
-       2,     2,     2,     2,     2,     2,     2,     2,     2,     2,
-       2,     2,     2,     2,     2,     2,     2,     2,     2,     2,
-       2,     2,     2,     2,     2,     2,     2,     2,     2,     2,
        2,    31,     2,     2,     2,     2,     2,     2,     2,     2,
-       2,    30,     2,     2,     2,     2,     2,     2,     2,     2,
        2,     2,     2,     2,     2,     2,     2,     2,     2,     2,
        2,     2,     2,     2,     2,     2,     2,     2,     2,     2,
        2,     2,     2,     2,     2,     2,     2,     2,     2,     2,
@@ -556,21 +1290,22 @@ static const yytype_int8 yytranslate[] =
        2,     2,     2,     2,     2,     2,     1,     2,     3,     4,
        5,     6,     7,     8,     9,    10,    11,    12,    13,    14,
       15,    16,    17,    18,    19,    20,    21,    22,    23,    24,
-      25
+      25,    26
 };
 
 #if YYDEBUG
   /* YYRLINE[YYN] -- Source line where rule number YYN was defined.  */
-static const yytype_int8 yyrline[] =
+static const yytype_int16 yyrline[] =
 {
-       0,    69,    69,    70,    70,    71,    72,    73,    74,    76,
-      77,    77,    79,    80,    81,    82,    82,    83,    84,    85,
-      86,    87,    88,    89,    90,    91,    91,    92,    92,    93,
-      94,    94,    95,    96,    97,    97,    98,    98,    99,   100,
-     101,   102,   102,   103,   103,   103,   103,   103,   103,   103,
-     104,   104,   105,   105,   106,   106,   107,   107,   107,   108,
-     108,   108,   108,   109,   109,   109,   109,   110,   110,   110,
-     110,   110,   111,   111,   111,   111,   111,   112
+       0,   813,   813,   814,   814,   815,   816,   817,   818,   819,
+     820,   821,   821,   823,   824,   825,   826,   827,   828,   829,
+     830,   831,   832,   833,   836,   838,   839,   840,   841,   842,
+     843,   844,   845,   846,   847,   848,   849,   850,   850,   851,
+     851,   852,   853,   854,   855,   856,   856,   857,   858,   859,
+     860,   861,   862,   863,   864,   865,   866,   867,   868,   869,
+     870,   871,   872,   873,   874,   875,   876,   877,   878,   879,
+     880,   881,   882,   883,   884,   885,   886,   887,   888,   889,
+     890,   891
 };
 #endif
 
@@ -582,12 +1317,13 @@ static const char *const yytname[] =
   "$end", "error", "$undefined", "WRITE", "READ", "RETURN", "WHILE", "IF",
   "ELSE", "END", "MODULO", "NOT", "VERDADERO", "FALSO", "NEWINSTRUCTION",
   "GREATER", "LESS", "EQUALS", "GREATEREQUAL", "LESSEQUAL", "DIFFERENT",
-  "IDENTIFIER", "FLOAT", "CHARACTER", "INTEGER", "STRING", "'+'", "'-'",
-  "'*'", "'/'", "'y'", "'o'", "'='", "'('", "')'", "':'", "','", "$accept",
-  "program", "instructions", "instruction", "return", "assignment",
-  "bareFunctionCall", "functionCall", "writeCall", "functionHeaderOpen",
-  "functionHeader", "functionDefinition", "definingParameter", "parameter",
-  "controlHeader", "control", "$@1", "$@2", "loopHeader", "loop", "$@3",
+  "IDENTIFIER", "FLOAT", "CHARACTER", "INTEGER", "STRING", "TYPE", "'+'",
+  "'-'", "'*'", "'/'", "'y'", "'o'", "'='", "'('", "')'", "':'", "','",
+  "$accept", "program", "instructions", "instruction", "return",
+  "assignment", "bareFunctionCall", "functionCall", "writeCall",
+  "functionHeaderOpen", "functionHeader", "functionDefinition",
+  "definingParameter", "parameter", "controlHeader", "elseHeader",
+  "control", "$@1", "$@2", "loopKeyword", "loopHeader", "loop", "$@3",
   "expression", "proposition", "andProposition", "negatedProposition",
   "operation", "product", "signedOperand", "operand", YY_NULLPTR
 };
@@ -600,12 +1336,12 @@ static const yytype_int16 yytoknum[] =
 {
        0,   256,   257,   258,   259,   260,   261,   262,   263,   264,
      265,   266,   267,   268,   269,   270,   271,   272,   273,   274,
-     275,   276,   277,   278,   279,   280,    43,    45,    42,    47,
-     121,   111,    61,    40,    41,    58,    44
+     275,   276,   277,   278,   279,   280,   281,    43,    45,    42,
+      47,   121,   111,    61,    40,    41,    58,    44
 };
 # endif
 
-#define YYPACT_NINF (-22)
+#define YYPACT_NINF (-56)
 
 #define yypact_value_is_default(Yyn) \
   ((Yyn) == YYPACT_NINF)
@@ -619,19 +1355,20 @@ static const yytype_int16 yytoknum[] =
      STATE-NUM.  */
 static const yytype_int16 yypact[] =
 {
-      14,   112,   112,   112,   112,    95,    48,    10,   -22,   -22,
-     -22,   -22,   -22,    13,    14,   -22,    14,   -22,    14,   -22,
-     -22,   -22,   128,   -22,   -22,    27,   -22,   -22,   -22,   -22,
-      63,    63,   112,   -22,   112,   147,    72,    47,   -22,    15,
-      -6,   -22,   -22,   147,    11,    39,   112,    45,   -22,   -22,
-      14,   -22,   -21,    80,    24,    81,    15,   -22,   -22,   -22,
-      46,     9,   147,   112,   112,   112,   112,   112,   112,   112,
-     112,   128,   128,   128,   128,   128,   -22,   -22,   -22,   -22,
-     147,   -22,   -22,    65,    88,   -22,   -22,   -22,     1,   -22,
-     -22,   -22,   -22,   -22,   -22,   -22,   112,    89,    34,   102,
-      93,   -22,   141,    47,   -22,    -6,    -6,   -22,   -22,   -22,
-      14,    14,   -22,   -22,   -22,    14,   147,    -3,    35,    14,
-      90,   -22,   -22,    69,   -22,   -22,   -22
+      38,   107,   160,   -56,   160,    14,    66,     5,   -56,   -56,
+     -56,   -56,   -56,   -56,   132,    38,   -56,    38,   -56,   160,
+      38,   -56,   -56,    10,   185,   -56,   -56,    70,   -56,   -56,
+     -56,   -56,    78,    78,   160,   -56,   160,   184,     6,    74,
+     -56,     7,    -4,   -56,   -56,   184,    13,   160,    71,   -56,
+     -56,    38,    86,    19,     2,   184,   148,   138,    45,   166,
+     -56,   -56,     7,   -56,   -56,   -56,    52,   160,   160,   160,
+     160,   160,   160,   160,   160,   185,   185,   185,   185,   185,
+     -56,   -56,   184,   -56,   -56,   -56,    73,    88,   -56,   -56,
+     160,   -56,   -56,   -56,     4,   -56,    38,   -56,   -56,   -56,
+     -56,   -56,   -56,    76,    39,   202,    96,   -56,   177,    74,
+     -56,    -4,    -4,   -56,   -56,   -56,    38,   -56,   100,   184,
+     -56,   -56,   176,    38,    -1,   -56,    38,   -56,   -56,    75,
+     -56,    79,   -56,   -56
 };
 
   /* YYDEFACT[STATE-NUM] -- Default reduction number in state STATE-NUM.
@@ -639,125 +1376,143 @@ static const yytype_int16 yypact[] =
      means the default is an error.  */
 static const yytype_int8 yydefact[] =
 {
-      11,     0,     0,     0,     0,    15,     0,     2,     3,    12,
-       5,    10,     9,     0,    11,     8,    11,     6,    11,     7,
-      66,    73,     0,    74,    75,    71,    67,    70,    68,    69,
-       0,     0,     0,    72,     0,    19,    49,    51,    53,    55,
-      58,    62,    65,    13,     0,     0,     0,    20,    21,     1,
-      11,    26,     0,     0,     0,     0,    54,    20,    64,    63,
-       0,     0,    27,     0,     0,     0,     0,     0,     0,     0,
-       0,     0,     0,     0,     0,     0,    41,    38,    34,    29,
-      14,    16,     4,     0,     0,    24,    23,    32,     0,    31,
-      40,    39,    77,    76,    18,    17,     0,    45,    46,    43,
-      47,    48,    44,    50,    52,    56,    57,    61,    59,    60,
-      11,    11,    22,    25,    36,    11,    28,     0,     0,    11,
-       0,    42,    35,     0,    33,    30,    37
+      12,     0,     0,    41,     0,    16,     0,     2,     3,    13,
+       5,    11,     9,    10,     0,    12,     8,    12,     6,     0,
+      12,     7,    70,     0,     0,    78,    79,    74,    71,    73,
+      72,    21,     0,     0,     0,    75,     0,    20,    53,    55,
+      57,    59,    62,    66,    69,    14,     0,     0,    22,    23,
+       1,    12,     0,     0,     0,    29,     0,     0,     0,     0,
+      77,    76,    58,    22,    68,    67,     0,     0,     0,     0,
+       0,     0,     0,     0,     0,     0,     0,     0,     0,     0,
+      37,    31,    15,    17,     4,    28,     0,     0,    19,    18,
+       0,    26,    25,    35,     0,    34,    12,    45,    42,    44,
+      43,    81,    80,    49,    50,    47,    51,    52,    48,    54,
+      56,    60,    61,    65,    63,    64,    12,    24,     0,    30,
+      39,    32,     0,    12,     0,    27,    12,    36,    33,     0,
+      38,     0,    46,    40
 };
 
   /* YYPGOTO[NTERM-NUM].  */
 static const yytype_int8 yypgoto[] =
 {
-     -22,   -22,   -13,    64,   -22,   -22,   -22,   -22,   -22,     0,
-     -22,   -22,   -22,   -22,   -22,   -22,   -22,   -22,   -22,   -22,
-     -22,     5,   -22,    57,    61,   120,    21,    73,   113
+     -56,   -56,   -13,    87,   -56,   -56,   -56,     0,   -56,     1,
+     -56,   -56,   -56,   -56,   -56,   -56,   -56,   -56,   -56,   -56,
+     -56,   -56,   -56,     8,   -56,    49,    51,   113,    -2,   -55,
+      53
 };
 
   /* YYDEFGOTO[NTERM-NUM].  */
 static const yytype_int8 yydefgoto[] =
 {
-      -1,     6,     7,     8,     9,    10,    11,    33,    12,    34,
-      14,    15,    52,    61,    16,    17,   111,   119,    18,    19,
-     110,    35,    36,    37,    38,    39,    40,    41,    42
+      -1,     6,     7,     8,     9,    10,    11,    35,    13,    36,
+      15,    16,    53,    54,    17,    96,    18,   116,   126,    19,
+      20,    21,   123,    55,    38,    39,    40,    41,    42,    43,
+      44
 };
 
   /* YYTABLE[YYPACT[STATE-NUM]] -- What to do in state STATE-NUM.  If
      positive, shift that token.  If negative, reduce the rule whose
      number is the opposite.  If YYTABLE_NINF, syntax error.  */
-static const yytype_int8 yytable[] =
+static const yytype_uint8 yytable[] =
 {
-      13,    53,   114,    54,    73,    55,   121,    43,    44,    45,
-      94,    50,    76,    83,    13,    84,    13,     1,    13,     2,
-       3,     4,    74,    75,    50,    87,    63,    64,    65,    66,
-      67,    68,    88,    89,    51,     5,   115,    60,    50,    62,
-      78,    71,    72,    95,   122,    96,    77,    92,    49,    50,
-      13,    80,    66,    67,    63,    64,    65,    66,    67,    68,
-      57,    63,    64,    65,    66,    67,    68,    21,    97,    98,
-      99,   100,   101,   102,    79,    23,    24,    70,   126,    81,
-      93,    85,    90,    50,    25,    26,    27,    28,    29,    86,
-      91,   124,   105,   106,    50,    50,    32,   117,   118,   125,
-     112,   116,   120,    69,    50,    64,   123,    66,    67,   113,
-      13,    13,    67,    20,    82,    13,    21,    63,    64,    13,
-      66,    67,    68,    22,    23,    24,   103,    46,    47,    20,
-      48,   104,    21,    25,    26,    27,    28,    29,    30,    31,
-      23,    24,    56,    58,    59,    32,   107,   108,   109,    25,
-      26,    27,    28,    29,    30,    31,    63,    64,     0,    66,
-      67,    32,    63,    64,    65,    66,    67,    68
+      12,    14,    56,    88,    57,   120,    77,    59,   130,    37,
+      45,    60,    46,    51,    80,    12,    14,    12,    14,    51,
+      12,    14,   113,   114,   115,    78,    79,    58,    67,    68,
+      69,    70,    71,    72,    75,    76,    61,    89,    73,    90,
+     121,     1,    66,     2,     3,     4,    97,    47,    48,    81,
+      49,    12,    14,   101,    86,    82,    87,    70,    71,     5,
+      67,    68,    69,    70,    71,    72,    50,    67,    68,    69,
+      70,    71,    72,   111,   112,   103,   104,   105,   106,   107,
+     108,    98,    23,   122,   132,    64,    65,   102,   133,    51,
+      25,    26,    68,    51,    70,    71,    12,    14,   119,    27,
+      28,    29,    30,   124,    63,    74,    83,    85,    22,   117,
+     129,    23,    34,   131,   118,    71,    12,    14,    24,    25,
+      26,   125,   109,    12,    14,   110,    12,    14,    27,    28,
+      29,    30,    31,    22,    32,    33,    23,    62,    84,    93,
+       0,    34,     0,    24,    25,    26,    94,    95,     0,    91,
+       0,     0,    51,    27,    28,    29,    30,    92,    52,    32,
+      33,    22,    51,     0,    23,     0,    34,    99,     0,     0,
+       0,    24,    25,    26,     0,   100,     0,   127,     0,     0,
+      51,    27,    28,    29,    30,   128,    22,    32,    33,    23,
+      51,     0,    67,    68,    34,    70,    71,    25,    26,    67,
+      68,    69,    70,    71,    72,     0,    27,    28,    29,    30,
+       0,     0,    32,    33,     0,     0,     0,    67,    68,    34,
+      70,    71,    72
 };
 
 static const yytype_int8 yycheck[] =
 {
-       0,    14,     1,    16,    10,    18,     9,     2,     3,     4,
-       1,    14,     1,    34,    14,    36,    16,     3,    18,     5,
-       6,     7,    28,    29,    14,     1,    15,    16,    17,    18,
-      19,    20,     8,     9,    21,    21,    35,    32,    14,    34,
-       1,    26,    27,    34,     9,    36,    35,     1,     0,    14,
-      50,    46,    18,    19,    15,    16,    17,    18,    19,    20,
-      33,    15,    16,    17,    18,    19,    20,     4,    63,    64,
-      65,    66,    67,    68,    35,    12,    13,    30,     9,    34,
-      34,     1,     1,    14,    21,    22,    23,    24,    25,     9,
-       9,     1,    71,    72,    14,    14,    33,   110,   111,     9,
-      35,    96,   115,    31,    14,    16,   119,    18,    19,    21,
-     110,   111,    19,     1,    50,   115,     4,    15,    16,   119,
-      18,    19,    20,    11,    12,    13,    69,    32,    33,     1,
-      35,    70,     4,    21,    22,    23,    24,    25,    26,    27,
-      12,    13,    22,    30,    31,    33,    73,    74,    75,    21,
-      22,    23,    24,    25,    26,    27,    15,    16,    -1,    18,
-      19,    33,    15,    16,    17,    18,    19,    20
+       0,     0,    15,     1,    17,     1,    10,    20,     9,     1,
+       2,     1,     4,    14,     1,    15,    15,    17,    17,    14,
+      20,    20,    77,    78,    79,    29,    30,    19,    15,    16,
+      17,    18,    19,    20,    27,    28,    26,    35,    32,    37,
+      36,     3,    34,     5,     6,     7,     1,    33,    34,    36,
+      36,    51,    51,     1,    35,    47,    37,    18,    19,    21,
+      15,    16,    17,    18,    19,    20,     0,    15,    16,    17,
+      18,    19,    20,    75,    76,    67,    68,    69,    70,    71,
+      72,    36,     4,    96,     9,    32,    33,    35,     9,    14,
+      12,    13,    16,    14,    18,    19,    96,    96,    90,    21,
+      22,    23,    24,   116,    34,    31,    35,    21,     1,    36,
+     123,     4,    34,   126,    26,    19,   116,   116,    11,    12,
+      13,    21,    73,   123,   123,    74,   126,   126,    21,    22,
+      23,    24,    25,     1,    27,    28,     4,    24,    51,     1,
+      -1,    34,    -1,    11,    12,    13,     8,     9,    -1,     1,
+      -1,    -1,    14,    21,    22,    23,    24,     9,    26,    27,
+      28,     1,    14,    -1,     4,    -1,    34,     1,    -1,    -1,
+      -1,    11,    12,    13,    -1,     9,    -1,     1,    -1,    -1,
+      14,    21,    22,    23,    24,     9,     1,    27,    28,     4,
+      14,    -1,    15,    16,    34,    18,    19,    12,    13,    15,
+      16,    17,    18,    19,    20,    -1,    21,    22,    23,    24,
+      -1,    -1,    27,    28,    -1,    -1,    -1,    15,    16,    34,
+      18,    19,    20
 };
 
   /* YYSTOS[STATE-NUM] -- The (internal number of the) accessing
      symbol of state STATE-NUM.  */
 static const yytype_int8 yystos[] =
 {
-       0,     3,     5,     6,     7,    21,    38,    39,    40,    41,
-      42,    43,    45,    46,    47,    48,    51,    52,    55,    56,
-       1,     4,    11,    12,    13,    21,    22,    23,    24,    25,
-      26,    27,    33,    44,    46,    58,    59,    60,    61,    62,
-      63,    64,    65,    58,    58,    58,    32,    33,    35,     0,
-      14,    21,    49,    39,    39,    39,    62,    33,    65,    65,
-      58,    50,    58,    15,    16,    17,    18,    19,    20,    31,
-      30,    26,    27,    10,    28,    29,     1,    35,     1,    35,
-      58,    34,    40,    34,    36,     1,     9,     1,     8,     9,
-       1,     9,     1,    34,     1,    34,    36,    58,    58,    58,
-      58,    58,    58,    60,    61,    63,    63,    64,    64,    64,
-      57,    53,    35,    21,     1,    35,    58,    39,    39,    54,
-      39,     9,     9,    39,     1,     9,     9
+       0,     3,     5,     6,     7,    21,    39,    40,    41,    42,
+      43,    44,    45,    46,    47,    48,    49,    52,    54,    57,
+      58,    59,     1,     4,    11,    12,    13,    21,    22,    23,
+      24,    25,    27,    28,    34,    45,    47,    61,    62,    63,
+      64,    65,    66,    67,    68,    61,    61,    33,    34,    36,
+       0,    14,    26,    50,    51,    61,    40,    40,    61,    40,
+       1,    26,    65,    34,    68,    68,    61,    15,    16,    17,
+      18,    19,    20,    32,    31,    27,    28,    10,    29,    30,
+       1,    36,    61,    35,    41,    21,    35,    37,     1,    35,
+      37,     1,     9,     1,     8,     9,    53,     1,    36,     1,
+       9,     1,    35,    61,    61,    61,    61,    61,    61,    63,
+      64,    66,    66,    67,    67,    67,    55,    36,    26,    61,
+       1,    36,    40,    60,    40,    21,    56,     1,     9,    40,
+       9,    40,     9,     9
 };
 
   /* YYR1[YYN] -- Symbol number of symbol that rule YYN derives.  */
 static const yytype_int8 yyr1[] =
 {
-       0,    37,    38,    39,    39,    40,    40,    40,    40,    40,
-      40,    40,    40,    41,    42,    43,    43,    44,    44,    45,
-      46,    47,    47,    48,    48,    49,    49,    50,    50,    51,
-      52,    52,    52,    52,    53,    52,    54,    52,    55,    56,
-      56,    57,    56,    58,    58,    58,    58,    58,    58,    58,
-      59,    59,    60,    60,    61,    61,    62,    62,    62,    63,
-      63,    63,    63,    64,    64,    64,    64,    65,    65,    65,
-      65,    65,    65,    65,    65,    65,    65,    65
+       0,    38,    39,    40,    40,    41,    41,    41,    41,    41,
+      41,    41,    41,    41,    42,    43,    44,    44,    45,    45,
+      46,    46,    47,    48,    48,    49,    49,    50,    50,    51,
+      51,    52,    53,    54,    54,    54,    54,    55,    54,    56,
+      54,    57,    58,    59,    59,    60,    59,    61,    61,    61,
+      61,    61,    61,    61,    62,    62,    63,    63,    64,    64,
+      65,    65,    65,    66,    66,    66,    66,    67,    67,    67,
+      67,    68,    68,    68,    68,    68,    68,    68,    68,    68,
+      68,    68
 };
 
   /* YYR2[YYN] -- Number of symbols on the right hand side of rule YYN.  */
 static const yytype_int8 yyr2[] =
 {
        0,     2,     1,     1,     3,     1,     1,     1,     1,     1,
-       1,     0,     1,     2,     3,     1,     3,     3,     3,     2,
-       2,     2,     4,     3,     3,     3,     1,     1,     3,     3,
-       6,     3,     3,     6,     0,     6,     0,     7,     3,     3,
-       3,     0,     6,     3,     3,     3,     3,     3,     3,     1,
-       3,     1,     3,     1,     2,     1,     3,     3,     1,     3,
-       3,     3,     1,     2,     2,     1,     1,     1,     1,     1,
-       1,     1,     1,     1,     1,     1,     3,     3
+       1,     1,     0,     1,     2,     3,     1,     3,     3,     3,
+       2,     2,     2,     2,     4,     3,     3,     4,     2,     1,
+       3,     3,     2,     5,     3,     3,     5,     0,     6,     0,
+       7,     1,     3,     3,     3,     0,     6,     3,     3,     3,
+       3,     3,     3,     1,     3,     1,     3,     1,     2,     1,
+       3,     3,     1,     3,     3,     3,     1,     2,     2,     1,
+       1,     1,     1,     1,     1,     1,     2,     2,     1,     1,
+       3,     3
 };
 
 
@@ -1452,212 +2207,407 @@ yyreduce:
   YY_REDUCE_PRINT (yyn);
   switch (yyn)
     {
-  case 5:
-#line 71 "analizadorsintactico.y"
-                           {printf("Asignación\n");}
-#line 1459 "analizadorsintactico.tab.c"
-    break;
-
-  case 6:
-#line 72 "analizadorsintactico.y"
-                        {printf("Condición\n");}
-#line 1465 "analizadorsintactico.tab.c"
-    break;
-
-  case 7:
-#line 73 "analizadorsintactico.y"
-                     {printf("Bucle\n");}
-#line 1471 "analizadorsintactico.tab.c"
-    break;
-
-  case 9:
-#line 76 "analizadorsintactico.y"
-                          {printf("Llamada a función escribe\n");}
-#line 1477 "analizadorsintactico.tab.c"
-    break;
-
-  case 10:
-#line 77 "analizadorsintactico.y"
-                                 {printf("Llamada a función sin parámetros\n");}
-#line 1483 "analizadorsintactico.tab.c"
-    break;
-
-  case 12:
-#line 79 "analizadorsintactico.y"
-                       {printf("Devuelve\n");}
-#line 1489 "analizadorsintactico.tab.c"
+  case 2:
+#line 813 "analizadorsintactico.y"
+                       {addText("\tGT(-2);\n", &instructionsList); addText("END", &instructionsList);}
+#line 2214 "analizadorsintactico.tab.c"
     break;
 
   case 14:
-#line 81 "analizadorsintactico.y"
-                                       {insert((yyvsp[-2].identifier), Unknown); printf("Declaración de variable %s\n", (yyvsp[-2].identifier));}
-#line 1495 "analizadorsintactico.tab.c"
+#line 824 "analizadorsintactico.y"
+                           {writeReturn((yyvsp[0].reg));}
+#line 2220 "analizadorsintactico.tab.c"
     break;
 
   case 15:
-#line 82 "analizadorsintactico.y"
-                              {checkArgumentCount((yyvsp[0].identifier));}
-#line 1501 "analizadorsintactico.tab.c"
+#line 825 "analizadorsintactico.y"
+                                       {writeAssignment((yyvsp[-2].identifier), (yyvsp[0].reg));}
+#line 2226 "analizadorsintactico.tab.c"
     break;
 
   case 16:
-#line 82 "analizadorsintactico.y"
-                                                                             {checkArgumentCount((yyvsp[-2].identifier));}
-#line 1507 "analizadorsintactico.tab.c"
+#line 826 "analizadorsintactico.y"
+                              {struct Node* f = find((yyvsp[0].identifier)); checkArgumentCount(f); beginCallFunction(f); (yyval.reg) = callFunction(f);}
+#line 2232 "analizadorsintactico.tab.c"
     break;
 
   case 17:
-#line 83 "analizadorsintactico.y"
-                                                {(yyval.identifier) = (yyvsp[-2].identifier); popContext(); checkArgumentCount((yyvsp[-2].identifier));}
-#line 1513 "analizadorsintactico.tab.c"
+#line 827 "analizadorsintactico.y"
+                                                           {struct Node* f = find((yyvsp[-2].identifier)); checkArgumentCount(f); beginCallFunction(f); (yyval.reg) = callFunction(f);}
+#line 2238 "analizadorsintactico.tab.c"
     break;
 
   case 18:
-#line 84 "analizadorsintactico.y"
-                                                           {(yyval.identifier) = (yyvsp[-2].identifier); popContext(); printf("en llamada a función ¿Falta un paréntesis?\n"); checkArgumentCount((yyvsp[-2].identifier));}
-#line 1519 "analizadorsintactico.tab.c"
+#line 828 "analizadorsintactico.y"
+                                                {checkArgumentCount((yyvsp[-2].symbol)); (yyval.reg) = callFunction((yyvsp[-2].symbol));}
+#line 2244 "analizadorsintactico.tab.c"
+    break;
+
+  case 19:
+#line 829 "analizadorsintactico.y"
+                                                           {popContext(); printf("en llamada a función ¿Falta un paréntesis?\n"); checkArgumentCount((yyvsp[-2].symbol));}
+#line 2250 "analizadorsintactico.tab.c"
     break;
 
   case 20:
-#line 86 "analizadorsintactico.y"
-                                    {(yyval.identifier) = (yyvsp[-1].identifier); insert((yyvsp[-1].identifier), Function); pushContext();}
-#line 1525 "analizadorsintactico.tab.c"
+#line 830 "analizadorsintactico.y"
+                             {writePrint((yyvsp[0].reg));}
+#line 2256 "analizadorsintactico.tab.c"
     break;
 
   case 21:
-#line 87 "analizadorsintactico.y"
-                                       {(yyval.identifier) = (yyvsp[-1].identifier); insert((yyvsp[-1].identifier), Function); pushContext(); lastFunctionArguments(currentContextVariables());}
-#line 1531 "analizadorsintactico.tab.c"
+#line 831 "analizadorsintactico.y"
+                                     {writePrintString((yyvsp[0].string));}
+#line 2262 "analizadorsintactico.tab.c"
     break;
 
   case 22:
-#line 88 "analizadorsintactico.y"
-                                                                                     {(yyval.identifier) = (yyvsp[-3].identifier); lastFunctionArguments(currentContextVariables());}
-#line 1537 "analizadorsintactico.tab.c"
+#line 832 "analizadorsintactico.y"
+                                    {(yyval.symbol) = distinguishFunctionCall((yyvsp[-1].identifier));}
+#line 2268 "analizadorsintactico.tab.c"
     break;
 
   case 23:
-#line 89 "analizadorsintactico.y"
-                                                     {popContext(); printf("Definición de función %s\n", (yyvsp[-2].identifier));}
-#line 1543 "analizadorsintactico.tab.c"
+#line 833 "analizadorsintactico.y"
+                                       {(yyval.identifier) = (yyvsp[-1].identifier); int label = getLabel(); 
+						insert((yyvsp[-1].identifier), Function, label, inFunction); pushContext(); 
+						lastFunctionArguments(currentContextVariables()); beginFunction(label);}
+#line 2276 "analizadorsintactico.tab.c"
     break;
 
   case 24:
-#line 90 "analizadorsintactico.y"
-                                                          {printf("en definición de función ¿Falta un fin?\n");}
-#line 1549 "analizadorsintactico.tab.c"
+#line 836 "analizadorsintactico.y"
+                                                                                     {(yyval.identifier) = (yyvsp[-3].symbol)->name; argumentCount = 0; 
+					lastFunctionArguments(currentContextVariables());}
+#line 2283 "analizadorsintactico.tab.c"
     break;
 
   case 25:
-#line 91 "analizadorsintactico.y"
-                                                     {(yyval.identifier) = (yyvsp[-2].identifier); insert((yyvsp[0].identifier), Unknown);}
-#line 1555 "analizadorsintactico.tab.c"
+#line 838 "analizadorsintactico.y"
+                                                     {endFunction(); popContext(); }
+#line 2289 "analizadorsintactico.tab.c"
     break;
 
   case 26:
-#line 91 "analizadorsintactico.y"
-                                                                                                  {(yyval.identifier) = (yyvsp[0].identifier); insert((yyvsp[0].identifier), Unknown);}
-#line 1561 "analizadorsintactico.tab.c"
+#line 839 "analizadorsintactico.y"
+                                                          {printf("en definición de función ¿Falta un fin?\n");}
+#line 2295 "analizadorsintactico.tab.c"
     break;
 
   case 27:
-#line 92 "analizadorsintactico.y"
-                       {argumentCount++;}
-#line 1567 "analizadorsintactico.tab.c"
+#line 840 "analizadorsintactico.y"
+                                                          {(yyval.identifier) = (yyvsp[-3].identifier); argumentCount++; insert((yyvsp[0].identifier), getType((yyvsp[-1].string)), (argumentCount+2)*4, inFunction);}
+#line 2301 "analizadorsintactico.tab.c"
     break;
 
   case 28:
-#line 92 "analizadorsintactico.y"
-                                                                     {argumentCount++;}
-#line 1573 "analizadorsintactico.tab.c"
+#line 841 "analizadorsintactico.y"
+                                                        {(yyval.identifier) = (yyvsp[0].identifier); argumentCount++; insert((yyvsp[0].identifier), getType((yyvsp[-1].string)), (argumentCount+2)*4, inFunction);}
+#line 2307 "analizadorsintactico.tab.c"
     break;
 
   case 29:
-#line 93 "analizadorsintactico.y"
-                                  {pushContext();}
-#line 1579 "analizadorsintactico.tab.c"
+#line 842 "analizadorsintactico.y"
+                       {argumentCount++; addCallFunctionParameter((yyvsp[0].reg));}
+#line 2313 "analizadorsintactico.tab.c"
     break;
 
   case 30:
-#line 94 "analizadorsintactico.y"
-                                                               {popContext();}
-#line 1585 "analizadorsintactico.tab.c"
+#line 843 "analizadorsintactico.y"
+                                                 {argumentCount++; addCallFunctionParameter((yyvsp[0].reg));}
+#line 2319 "analizadorsintactico.tab.c"
     break;
 
   case 31:
-#line 94 "analizadorsintactico.y"
-                                                                                                                {popContext();}
-#line 1591 "analizadorsintactico.tab.c"
+#line 844 "analizadorsintactico.y"
+                                  {pushContext(); writeConditionalStart((yyvsp[-1].reg));}
+#line 2325 "analizadorsintactico.tab.c"
     break;
 
   case 32:
-#line 95 "analizadorsintactico.y"
-                                                 {printf("en condición ¿Falta un fin?\n");}
-#line 1597 "analizadorsintactico.tab.c"
+#line 845 "analizadorsintactico.y"
+                      {writeElse();}
+#line 2331 "analizadorsintactico.tab.c"
     break;
 
   case 33:
-#line 96 "analizadorsintactico.y"
-                                                                       {printf("en condición ¿Falta un fin?\n");}
-#line 1603 "analizadorsintactico.tab.c"
+#line 846 "analizadorsintactico.y"
+                                                                 {popContext(); writeConditionalEnd();}
+#line 2337 "analizadorsintactico.tab.c"
     break;
 
   case 34:
-#line 97 "analizadorsintactico.y"
-                                    {printf("en condición ¿Faltan los dos puntos?\n");}
-#line 1609 "analizadorsintactico.tab.c"
+#line 847 "analizadorsintactico.y"
+                                                       {popContext(); writeConditionalEnd();}
+#line 2343 "analizadorsintactico.tab.c"
+    break;
+
+  case 35:
+#line 848 "analizadorsintactico.y"
+                                                 {printf("en condición ¿Falta un fin?\n");}
+#line 2349 "analizadorsintactico.tab.c"
     break;
 
   case 36:
-#line 98 "analizadorsintactico.y"
-                                                      {printf("en condición ¿Faltan los dos puntos?\n");}
-#line 1615 "analizadorsintactico.tab.c"
+#line 849 "analizadorsintactico.y"
+                                                                         {printf("en condición ¿Falta un fin?\n");}
+#line 2355 "analizadorsintactico.tab.c"
     break;
 
-  case 38:
-#line 99 "analizadorsintactico.y"
-                                  {pushContext();}
-#line 1621 "analizadorsintactico.tab.c"
+  case 37:
+#line 850 "analizadorsintactico.y"
+                                    {printf("en condición ¿Faltan los dos puntos?\n");}
+#line 2361 "analizadorsintactico.tab.c"
     break;
 
   case 39:
-#line 100 "analizadorsintactico.y"
-                                   {popContext();}
-#line 1627 "analizadorsintactico.tab.c"
-    break;
-
-  case 40:
-#line 101 "analizadorsintactico.y"
-                                      {popContext(); printf("en bucle ¿Falta un fin?\n");}
-#line 1633 "analizadorsintactico.tab.c"
+#line 851 "analizadorsintactico.y"
+                                                      {printf("en condición ¿Faltan los dos puntos?\n");}
+#line 2367 "analizadorsintactico.tab.c"
     break;
 
   case 41:
-#line 102 "analizadorsintactico.y"
-                               {printf("en bucle ¿Faltan los dos puntos?\n");}
-#line 1639 "analizadorsintactico.tab.c"
+#line 852 "analizadorsintactico.y"
+                    {writeWhileLabel();}
+#line 2373 "analizadorsintactico.tab.c"
+    break;
+
+  case 42:
+#line 853 "analizadorsintactico.y"
+                                        {pushContext(); writeWhileStart((yyvsp[-1].reg));}
+#line 2379 "analizadorsintactico.tab.c"
+    break;
+
+  case 43:
+#line 854 "analizadorsintactico.y"
+                                   {popContext(); writeWhileEnd();}
+#line 2385 "analizadorsintactico.tab.c"
+    break;
+
+  case 44:
+#line 855 "analizadorsintactico.y"
+                                      {popContext(); printf("en bucle ¿Falta un fin?\n");}
+#line 2391 "analizadorsintactico.tab.c"
+    break;
+
+  case 45:
+#line 856 "analizadorsintactico.y"
+                                     {printf("en bucle ¿Faltan los dos puntos?\n");}
+#line 2397 "analizadorsintactico.tab.c"
+    break;
+
+  case 47:
+#line 857 "analizadorsintactico.y"
+                                             {(yyval.reg) = writeOperation((yyvsp[-2].reg), (yyvsp[0].reg), "==");}
+#line 2403 "analizadorsintactico.tab.c"
+    break;
+
+  case 48:
+#line 858 "analizadorsintactico.y"
+                                                                {(yyval.reg) = writeOperation((yyvsp[-2].reg), (yyvsp[0].reg), "!=");}
+#line 2409 "analizadorsintactico.tab.c"
+    break;
+
+  case 49:
+#line 859 "analizadorsintactico.y"
+                                                              {(yyval.reg) = writeOperation((yyvsp[-2].reg), (yyvsp[0].reg), ">");}
+#line 2415 "analizadorsintactico.tab.c"
+    break;
+
+  case 50:
+#line 860 "analizadorsintactico.y"
+                                                           {(yyval.reg) = writeOperation((yyvsp[-2].reg), (yyvsp[0].reg), "<");}
+#line 2421 "analizadorsintactico.tab.c"
+    break;
+
+  case 51:
+#line 861 "analizadorsintactico.y"
+                                                                   {(yyval.reg) = writeOperation((yyvsp[-2].reg), (yyvsp[0].reg), ">=");}
+#line 2427 "analizadorsintactico.tab.c"
+    break;
+
+  case 52:
+#line 862 "analizadorsintactico.y"
+                                                                {(yyval.reg) = writeOperation((yyvsp[-2].reg), (yyvsp[0].reg), "<=");}
+#line 2433 "analizadorsintactico.tab.c"
+    break;
+
+  case 53:
+#line 863 "analizadorsintactico.y"
+                                            {(yyval.reg) = (yyvsp[0].reg);}
+#line 2439 "analizadorsintactico.tab.c"
+    break;
+
+  case 54:
+#line 864 "analizadorsintactico.y"
+                                               {(yyval.reg) = writeOperation((yyvsp[-2].reg), (yyvsp[0].reg), "|");}
+#line 2445 "analizadorsintactico.tab.c"
+    break;
+
+  case 55:
+#line 865 "analizadorsintactico.y"
+                                               {(yyval.reg) = (yyvsp[0].reg);}
+#line 2451 "analizadorsintactico.tab.c"
+    break;
+
+  case 56:
+#line 866 "analizadorsintactico.y"
+                                                              {(yyval.reg) = writeOperation((yyvsp[-2].reg), (yyvsp[0].reg), "&");}
+#line 2457 "analizadorsintactico.tab.c"
+    break;
+
+  case 57:
+#line 867 "analizadorsintactico.y"
+                                                           {(yyval.reg) = (yyvsp[0].reg);}
+#line 2463 "analizadorsintactico.tab.c"
+    break;
+
+  case 58:
+#line 868 "analizadorsintactico.y"
+                                      {(yyval.reg) = (yyvsp[0].reg); writeBeforeRegister((yyvsp[0].reg), '~');}
+#line 2469 "analizadorsintactico.tab.c"
+    break;
+
+  case 59:
+#line 869 "analizadorsintactico.y"
+                                                          {(yyval.reg) = (yyvsp[0].reg);}
+#line 2475 "analizadorsintactico.tab.c"
+    break;
+
+  case 60:
+#line 870 "analizadorsintactico.y"
+                                  {(yyval.reg) = writeOperation((yyvsp[-2].reg), (yyvsp[0].reg), "+");}
+#line 2481 "analizadorsintactico.tab.c"
+    break;
+
+  case 61:
+#line 871 "analizadorsintactico.y"
+                                              {(yyval.reg) = writeOperation((yyvsp[-2].reg), (yyvsp[0].reg), "-");}
+#line 2487 "analizadorsintactico.tab.c"
+    break;
+
+  case 62:
+#line 872 "analizadorsintactico.y"
+                                {(yyval.reg) = (yyvsp[0].reg);}
+#line 2493 "analizadorsintactico.tab.c"
+    break;
+
+  case 63:
+#line 873 "analizadorsintactico.y"
+                                          {(yyval.reg) = writeOperation((yyvsp[-2].reg), (yyvsp[0].reg), "*");}
+#line 2499 "analizadorsintactico.tab.c"
+    break;
+
+  case 64:
+#line 874 "analizadorsintactico.y"
+                                                  {(yyval.reg) = writeOperation((yyvsp[-2].reg), (yyvsp[0].reg), "/");}
+#line 2505 "analizadorsintactico.tab.c"
+    break;
+
+  case 65:
+#line 875 "analizadorsintactico.y"
+                                                     {(yyval.reg) = writeOperation((yyvsp[-2].reg), (yyvsp[0].reg), "%");}
+#line 2511 "analizadorsintactico.tab.c"
     break;
 
   case 66:
-#line 109 "analizadorsintactico.y"
-                                                            {printf("en expresión ¿Falta un operando?\n");}
-#line 1645 "analizadorsintactico.tab.c"
+#line 876 "analizadorsintactico.y"
+                                      {(yyval.reg) = (yyvsp[0].reg);}
+#line 2517 "analizadorsintactico.tab.c"
+    break;
+
+  case 67:
+#line 877 "analizadorsintactico.y"
+                            {(yyval.reg) = (yyvsp[0].reg); writeBeforeRegister((yyvsp[0].reg), '-');}
+#line 2523 "analizadorsintactico.tab.c"
+    break;
+
+  case 68:
+#line 878 "analizadorsintactico.y"
+                                            {(yyval.reg) = (yyvsp[0].reg);}
+#line 2529 "analizadorsintactico.tab.c"
+    break;
+
+  case 69:
+#line 879 "analizadorsintactico.y"
+                                        {(yyval.reg) = (yyvsp[0].reg);}
+#line 2535 "analizadorsintactico.tab.c"
+    break;
+
+  case 70:
+#line 880 "analizadorsintactico.y"
+                                      {printf("en expresión ¿Falta un operando?\n");}
+#line 2541 "analizadorsintactico.tab.c"
     break;
 
   case 71:
-#line 110 "analizadorsintactico.y"
-                                                            {checkExists((yyvsp[0].identifier));}
-#line 1651 "analizadorsintactico.tab.c"
+#line 881 "analizadorsintactico.y"
+                      {(yyval.reg) = writeRegisterFloat((yyvsp[0].floating));}
+#line 2547 "analizadorsintactico.tab.c"
+    break;
+
+  case 72:
+#line 882 "analizadorsintactico.y"
+                                {(yyval.reg) = writeRegisterInt((yyvsp[0].integer));}
+#line 2553 "analizadorsintactico.tab.c"
+    break;
+
+  case 73:
+#line 883 "analizadorsintactico.y"
+                                  {(yyval.reg) = writeRegisterChar((yyvsp[0].character));}
+#line 2559 "analizadorsintactico.tab.c"
+    break;
+
+  case 74:
+#line 884 "analizadorsintactico.y"
+                                   {checkExists((yyvsp[0].identifier)); (yyval.reg) = writeVariableAccess((yyvsp[0].identifier));}
+#line 2565 "analizadorsintactico.tab.c"
+    break;
+
+  case 75:
+#line 885 "analizadorsintactico.y"
+                                     {(yyval.reg) = (yyvsp[0].reg);}
+#line 2571 "analizadorsintactico.tab.c"
+    break;
+
+  case 76:
+#line 886 "analizadorsintactico.y"
+                                  {(yyval.reg) = writeRead((yyvsp[0].string));}
+#line 2577 "analizadorsintactico.tab.c"
     break;
 
   case 77:
-#line 112 "analizadorsintactico.y"
-                                     {printf("en expresión ¿Falta un paréntesis?\n");}
-#line 1657 "analizadorsintactico.tab.c"
+#line 887 "analizadorsintactico.y"
+                                   {printf("en lectura desde usuario ¿Falta el tipo de dato?\n");}
+#line 2583 "analizadorsintactico.tab.c"
+    break;
+
+  case 78:
+#line 888 "analizadorsintactico.y"
+                                  {(yyval.reg) = writeRegisterBool(-1);}
+#line 2589 "analizadorsintactico.tab.c"
+    break;
+
+  case 79:
+#line 889 "analizadorsintactico.y"
+                              {(yyval.reg) = writeRegisterBool(0);}
+#line 2595 "analizadorsintactico.tab.c"
+    break;
+
+  case 80:
+#line 890 "analizadorsintactico.y"
+                                           {(yyval.reg) = (yyvsp[-1].reg);}
+#line 2601 "analizadorsintactico.tab.c"
+    break;
+
+  case 81:
+#line 891 "analizadorsintactico.y"
+                                             {printf("en expresión ¿Falta un paréntesis?\n");}
+#line 2607 "analizadorsintactico.tab.c"
     break;
 
 
-#line 1661 "analizadorsintactico.tab.c"
+#line 2611 "analizadorsintactico.tab.c"
 
       default: break;
     }
@@ -1889,16 +2839,40 @@ yyreturn:
 #endif
   return yyresult;
 }
-#line 113 "analizadorsintactico.y"
+#line 892 "analizadorsintactico.y"
 
+
+void openFile(char* inputFileName) {
+	char* extensionPointer = inputFileName;
+	int size = 0;
+	while (*extensionPointer != '\0') {
+		extensionPointer++;
+		size++;
+	}
+	extensionPointer -= 5;
+	size -= 5;
+	if (size > 0 && strcmp(extensionPointer, ".luma") == 0) {
+		*extensionPointer = '\0';
+	}
+}
 
 int main(int argc, char** argv) {
-  if (argc>1) yyin=fopen(argv[1],"r");
-  yyparse();
-  printf("\n");
-  printStack();
+	if (argc>1) {
+		char* filename = argv[1];
+		yyin=fopen(filename,"r");
+		openFile(filename);
+		functionPosition = staticPosition + 1;
+		insertRegisters();
+		addText("#include \"Q.h\"\n", &instructionsList);
+		addText("BEGIN\n", &instructionsList);
+		addText("L 0:\n", &instructionsList);
+		yyparse();
+		writeText(filename, &instructionsList);
+	} else {
+		printf("Falta un argumento (el fichero que se va a compilar)\n");
+	}
 }
 
 void yyerror(char* mens) {
-  printf("Error en linea %i: %s\n",line,mens);
+	printf("Error en linea %i: %s\n",line,mens);
 }

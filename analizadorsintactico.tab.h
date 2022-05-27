@@ -71,7 +71,8 @@ extern int yydebug;
     FLOAT = 277,
     CHARACTER = 278,
     INTEGER = 279,
-    STRING = 280
+    STRING = 280,
+    TYPE = 281
   };
 #endif
 
@@ -79,10 +80,11 @@ extern int yydebug;
 #if ! defined YYSTYPE && ! defined YYSTYPE_IS_DECLARED
 union YYSTYPE
 {
-#line 39 "analizadorsintactico.y"
- char* identifier; float floating; char character; int integer; char* string; 
+#line 771 "analizadorsintactico.y"
+ char* identifier; struct Variable reg; struct Node* symbol; 
+			float floating; char character; int integer; char* string; 
 
-#line 86 "analizadorsintactico.tab.h"
+#line 88 "analizadorsintactico.tab.h"
 
 };
 typedef union YYSTYPE YYSTYPE;

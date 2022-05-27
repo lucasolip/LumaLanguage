@@ -1,12 +1,14 @@
-bisiesto(año):
+bisiesto(entero año):
 	devuelve (año modulo 4 igual 0) y (año modulo 100 distinto 0) o (año modulo 400 igual 0)
 fin
 
-comando = lee
-mientras comando distinto “salir”:
+escribe "Introduzca un año después de Cristo: "
+comando = lee entero
+mientras comando distinto -1:
 	si bisiesto(comando):
-		escribe “Año bisiesto\n”
+		escribe "Año bisiesto\n"
 	sino:
-		escribe “Año ordinario\n”
+		escribe "Año ordinario\n"
 	fin
+	comando = lee entero
 fin

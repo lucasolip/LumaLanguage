@@ -11,233 +11,246 @@ Gramática
     5            | control
     6            | loop
     7            | functionDefinition
-    8            | writeCall
-    9            | bareFunctionCall
-   10            | %empty
-   11            | return
+    8            | functionCall
+    9            | writeCall
+   10            | bareFunctionCall
+   11            | %empty
+   12            | return
 
-   12 return: RETURN expression
+   13 return: RETURN expression
 
-   13 assignment: IDENTIFIER '=' expression
+   14 assignment: IDENTIFIER '=' expression
 
-   14 bareFunctionCall: IDENTIFIER
-   15                 | IDENTIFIER '(' ')'
+   15 bareFunctionCall: IDENTIFIER
+   16                 | IDENTIFIER '(' ')'
 
-   16 functionCall: functionHeaderOpen parameter ')'
-   17             | functionHeaderOpen parameter error
+   17 functionCall: functionHeaderOpen parameter ')'
+   18             | functionHeaderOpen parameter error
 
-   18 writeCall: WRITE expression
+   19 writeCall: WRITE expression
+   20          | WRITE STRING
 
-   19 functionHeaderOpen: IDENTIFIER '('
+   21 functionHeaderOpen: IDENTIFIER '('
 
-   20 functionHeader: IDENTIFIER ':'
-   21               | functionHeaderOpen definingParameter ')' ':'
+   22 functionHeader: IDENTIFIER ':'
+   23               | functionHeaderOpen definingParameter ')' ':'
 
-   22 functionDefinition: functionHeader instructions END
-   23                   | functionHeader instructions error
+   24 functionDefinition: functionHeader instructions END
+   25                   | functionHeader instructions error
 
-   24 definingParameter: definingParameter ',' IDENTIFIER
-   25                  | IDENTIFIER
+   26 definingParameter: definingParameter ',' TYPE IDENTIFIER
+   27                  | TYPE IDENTIFIER
 
-   26 parameter: expression
-   27          | parameter ',' expression
+   28 parameter: expression
+   29          | parameter ',' expression
 
-   28 controlHeader: IF expression ':'
+   30 controlHeader: IF expression ':'
 
-   29 control: controlHeader instructions ELSE ':' instructions END
-   30        | controlHeader instructions END
-   31        | controlHeader instructions error
-   32        | controlHeader instructions ELSE ':' instructions error
+   31 elseHeader: ELSE ':'
 
-   33 $@1: %empty
+   32 control: controlHeader instructions elseHeader instructions END
+   33        | controlHeader instructions END
+   34        | controlHeader instructions error
+   35        | controlHeader instructions elseHeader instructions error
 
-   34 control: IF expression error $@1 instructions END
+   36 $@1: %empty
 
-   35 $@2: %empty
+   37 control: IF expression error $@1 instructions END
 
-   36 control: controlHeader instructions ELSE error $@2 instructions END
+   38 $@2: %empty
 
-   37 loopHeader: WHILE expression ':'
+   39 control: controlHeader instructions ELSE error $@2 instructions END
 
-   38 loop: loopHeader instructions END
-   39     | loopHeader instructions error
+   40 loopKeyword: WHILE
 
-   40 $@3: %empty
+   41 loopHeader: loopKeyword expression ':'
 
-   41 loop: WHILE expression error $@3 instructions END
+   42 loop: loopHeader instructions END
+   43     | loopHeader instructions error
 
-   42 expression: expression EQUALS expression
-   43           | expression DIFFERENT expression
-   44           | expression GREATER expression
-   45           | expression LESS expression
-   46           | expression GREATEREQUAL expression
-   47           | expression LESSEQUAL expression
-   48           | proposition
+   44 $@3: %empty
 
-   49 proposition: proposition 'o' andProposition
-   50            | andProposition
+   45 loop: loopKeyword expression error $@3 instructions END
 
-   51 andProposition: andProposition 'y' negatedProposition
-   52               | negatedProposition
+   46 expression: expression EQUALS expression
+   47           | expression DIFFERENT expression
+   48           | expression GREATER expression
+   49           | expression LESS expression
+   50           | expression GREATEREQUAL expression
+   51           | expression LESSEQUAL expression
+   52           | proposition
 
-   53 negatedProposition: NOT operation
-   54                   | operation
+   53 proposition: proposition 'o' andProposition
+   54            | andProposition
 
-   55 operation: operation '+' product
-   56          | operation '-' product
-   57          | product
+   55 andProposition: andProposition 'y' negatedProposition
+   56               | negatedProposition
 
-   58 product: product '*' signedOperand
-   59        | product '/' signedOperand
-   60        | product MODULO signedOperand
-   61        | signedOperand
+   57 negatedProposition: NOT operation
+   58                   | operation
 
-   62 signedOperand: '-' operand
-   63              | '+' operand
-   64              | operand
-   65              | error
+   59 operation: operation '+' product
+   60          | operation '-' product
+   61          | product
 
-   66 operand: FLOAT
-   67        | INTEGER
-   68        | STRING
-   69        | CHARACTER
-   70        | IDENTIFIER
-   71        | functionCall
-   72        | READ
-   73        | VERDADERO
-   74        | FALSO
-   75        | '(' expression ')'
-   76        | '(' expression error
+   62 product: product '*' signedOperand
+   63        | product '/' signedOperand
+   64        | product MODULO signedOperand
+   65        | signedOperand
+
+   66 signedOperand: '-' operand
+   67              | '+' operand
+   68              | operand
+   69              | error
+
+   70 operand: FLOAT
+   71        | INTEGER
+   72        | CHARACTER
+   73        | IDENTIFIER
+   74        | functionCall
+   75        | READ TYPE
+   76        | READ error
+   77        | VERDADERO
+   78        | FALSO
+   79        | '(' expression ')'
+   80        | '(' expression error
 
 
 Terminales con las reglas donde aparecen
 
     $end (0) 0
-    '(' (40) 15 19 75 76
-    ')' (41) 15 16 21 75
-    '*' (42) 58
-    '+' (43) 55 63
-    ',' (44) 24 27
-    '-' (45) 56 62
-    '/' (47) 59
-    ':' (58) 20 21 28 29 32 37
-    '=' (61) 13
-    'o' (111) 49
-    'y' (121) 51
-    error (256) 17 23 31 32 34 36 39 41 65 76
-    WRITE (258) 18
-    READ (259) 72
-    RETURN (260) 12
-    WHILE (261) 37 41
-    IF (262) 28 34
-    ELSE (263) 29 32 36
-    END (264) 22 29 30 34 36 38 41
-    MODULO (265) 60
-    NOT (266) 53
-    VERDADERO (267) 73
-    FALSO (268) 74
+    '(' (40) 16 21 79 80
+    ')' (41) 16 17 23 79
+    '*' (42) 62
+    '+' (43) 59 67
+    ',' (44) 26 29
+    '-' (45) 60 66
+    '/' (47) 63
+    ':' (58) 22 23 30 31 41
+    '=' (61) 14
+    'o' (111) 53
+    'y' (121) 55
+    error (256) 18 25 34 35 37 39 43 45 69 76 80
+    WRITE (258) 19 20
+    READ (259) 75 76
+    RETURN (260) 13
+    WHILE (261) 40
+    IF (262) 30 37
+    ELSE (263) 31 39
+    END (264) 24 32 33 37 39 42 45
+    MODULO (265) 64
+    NOT (266) 57
+    VERDADERO (267) 77
+    FALSO (268) 78
     NEWINSTRUCTION (269) 3
-    GREATER (270) 44
-    LESS (271) 45
-    EQUALS (272) 42
-    GREATEREQUAL (273) 46
-    LESSEQUAL (274) 47
-    DIFFERENT (275) 43
-    IDENTIFIER <identifier> (276) 13 14 15 19 20 24 25 70
-    FLOAT <floating> (277) 66
-    CHARACTER <character> (278) 69
-    INTEGER <integer> (279) 67
-    STRING <string> (280) 68
+    GREATER (270) 48
+    LESS (271) 49
+    EQUALS (272) 46
+    GREATEREQUAL (273) 50
+    LESSEQUAL (274) 51
+    DIFFERENT (275) 47
+    IDENTIFIER <identifier> (276) 14 15 16 21 22 26 27 73
+    FLOAT <floating> (277) 70
+    CHARACTER <character> (278) 72
+    INTEGER <integer> (279) 71
+    STRING <string> (280) 20
+    TYPE <string> (281) 26 27 75
 
 
 No terminales con las reglas donde aparecen
 
-    $accept (37)
+    $accept (38)
         on left: 0
-    program (38)
+    program (39)
         on left: 1
         on right: 0
-    instructions (39)
+    instructions (40)
         on left: 2 3
-        on right: 1 3 22 23 29 30 31 32 34 36 38 39 41
-    instruction (40)
-        on left: 4 5 6 7 8 9 10 11
+        on right: 1 3 24 25 32 33 34 35 37 39 42 43 45
+    instruction (41)
+        on left: 4 5 6 7 8 9 10 11 12
         on right: 2 3
-    return (41)
-        on left: 12
-        on right: 11
-    assignment (42)
+    return (42)
         on left: 13
+        on right: 12
+    assignment (43)
+        on left: 14
         on right: 4
-    bareFunctionCall (43)
-        on left: 14 15
+    bareFunctionCall <reg> (44)
+        on left: 15 16
+        on right: 10
+    functionCall <reg> (45)
+        on left: 17 18
+        on right: 8 74
+    writeCall (46)
+        on left: 19 20
         on right: 9
-    functionCall <identifier> (44)
-        on left: 16 17
-        on right: 71
-    writeCall (45)
-        on left: 18
-        on right: 8
-    functionHeaderOpen <identifier> (46)
-        on left: 19
-        on right: 16 17 21
-    functionHeader <identifier> (47)
-        on left: 20 21
-        on right: 22 23
-    functionDefinition (48)
+    functionHeaderOpen <symbol> (47)
+        on left: 21
+        on right: 17 18 23
+    functionHeader <identifier> (48)
         on left: 22 23
-        on right: 7
-    definingParameter <identifier> (49)
+        on right: 24 25
+    functionDefinition (49)
         on left: 24 25
-        on right: 21 24
-    parameter (50)
+        on right: 7
+    definingParameter <identifier> (50)
         on left: 26 27
-        on right: 16 17 27
-    controlHeader (51)
-        on left: 28
-        on right: 29 30 31 32 36
-    control (52)
-        on left: 29 30 31 32 34 36
+        on right: 23 26
+    parameter (51)
+        on left: 28 29
+        on right: 17 18 29
+    controlHeader (52)
+        on left: 30
+        on right: 32 33 34 35 39
+    elseHeader (53)
+        on left: 31
+        on right: 32 35
+    control (54)
+        on left: 32 33 34 35 37 39
         on right: 5
-    $@1 (53)
-        on left: 33
-        on right: 34
-    $@2 (54)
-        on left: 35
-        on right: 36
-    loopHeader (55)
-        on left: 37
-        on right: 38 39
-    loop (56)
-        on left: 38 39 41
-        on right: 6
-    $@3 (57)
+    $@1 (55)
+        on left: 36
+        on right: 37
+    $@2 (56)
+        on left: 38
+        on right: 39
+    loopKeyword (57)
         on left: 40
-        on right: 41
-    expression (58)
-        on left: 42 43 44 45 46 47 48
-        on right: 12 13 18 26 27 28 34 37 41 42 43 44 45 46 47 75 76
-    proposition (59)
-        on left: 49 50
-        on right: 48 49
-    andProposition (60)
-        on left: 51 52
-        on right: 49 50 51
-    negatedProposition (61)
+        on right: 41 45
+    loopHeader (58)
+        on left: 41
+        on right: 42 43
+    loop (59)
+        on left: 42 43 45
+        on right: 6
+    $@3 (60)
+        on left: 44
+        on right: 45
+    expression <reg> (61)
+        on left: 46 47 48 49 50 51 52
+        on right: 13 14 19 28 29 30 37 41 45 46 47 48 49 50 51 79 80
+    proposition <reg> (62)
         on left: 53 54
-        on right: 51 52
-    operation (62)
-        on left: 55 56 57
-        on right: 53 54 55 56
-    product (63)
-        on left: 58 59 60 61
-        on right: 55 56 57 58 59 60
-    signedOperand (64)
+        on right: 52 53
+    andProposition <reg> (63)
+        on left: 55 56
+        on right: 53 54 55
+    negatedProposition <reg> (64)
+        on left: 57 58
+        on right: 55 56
+    operation <reg> (65)
+        on left: 59 60 61
+        on right: 57 58 59 60
+    product <reg> (66)
         on left: 62 63 64 65
-        on right: 58 59 60 61
-    operand (65)
-        on left: 66 67 68 69 70 71 72 73 74 75 76
-        on right: 62 63 64
+        on right: 59 60 61 62 63 64
+    signedOperand <reg> (67)
+        on left: 66 67 68 69
+        on right: 62 63 64 65
+    operand <reg> (68)
+        on left: 70 71 72 73 74 75 76 77 78 79 80
+        on right: 66 67 68
 
 
 Estado 0
@@ -250,7 +263,7 @@ Estado 0
     IF          desplazar e ir al estado 4
     IDENTIFIER  desplazar e ir al estado 5
 
-    $default  reduce usando la regla 10 (instruction)
+    $default  reduce usando la regla 11 (instruction)
 
     program             ir al estado 6
     instructions        ir al estado 7
@@ -258,158 +271,135 @@ Estado 0
     return              ir al estado 9
     assignment          ir al estado 10
     bareFunctionCall    ir al estado 11
-    writeCall           ir al estado 12
-    functionHeaderOpen  ir al estado 13
-    functionHeader      ir al estado 14
-    functionDefinition  ir al estado 15
-    controlHeader       ir al estado 16
-    control             ir al estado 17
-    loopHeader          ir al estado 18
-    loop                ir al estado 19
+    functionCall        ir al estado 12
+    writeCall           ir al estado 13
+    functionHeaderOpen  ir al estado 14
+    functionHeader      ir al estado 15
+    functionDefinition  ir al estado 16
+    controlHeader       ir al estado 17
+    control             ir al estado 18
+    loopKeyword         ir al estado 19
+    loopHeader          ir al estado 20
+    loop                ir al estado 21
 
 
 Estado 1
 
-   18 writeCall: WRITE . expression
+   19 writeCall: WRITE . expression
+   20          | WRITE . STRING
 
-    error       desplazar e ir al estado 20
-    READ        desplazar e ir al estado 21
-    NOT         desplazar e ir al estado 22
-    VERDADERO   desplazar e ir al estado 23
-    FALSO       desplazar e ir al estado 24
-    IDENTIFIER  desplazar e ir al estado 25
-    FLOAT       desplazar e ir al estado 26
-    CHARACTER   desplazar e ir al estado 27
-    INTEGER     desplazar e ir al estado 28
-    STRING      desplazar e ir al estado 29
-    '+'         desplazar e ir al estado 30
-    '-'         desplazar e ir al estado 31
-    '('         desplazar e ir al estado 32
+    error       desplazar e ir al estado 22
+    READ        desplazar e ir al estado 23
+    NOT         desplazar e ir al estado 24
+    VERDADERO   desplazar e ir al estado 25
+    FALSO       desplazar e ir al estado 26
+    IDENTIFIER  desplazar e ir al estado 27
+    FLOAT       desplazar e ir al estado 28
+    CHARACTER   desplazar e ir al estado 29
+    INTEGER     desplazar e ir al estado 30
+    STRING      desplazar e ir al estado 31
+    '+'         desplazar e ir al estado 32
+    '-'         desplazar e ir al estado 33
+    '('         desplazar e ir al estado 34
 
-    functionCall        ir al estado 33
-    functionHeaderOpen  ir al estado 34
-    expression          ir al estado 35
-    proposition         ir al estado 36
-    andProposition      ir al estado 37
-    negatedProposition  ir al estado 38
-    operation           ir al estado 39
-    product             ir al estado 40
-    signedOperand       ir al estado 41
-    operand             ir al estado 42
+    functionCall        ir al estado 35
+    functionHeaderOpen  ir al estado 36
+    expression          ir al estado 37
+    proposition         ir al estado 38
+    andProposition      ir al estado 39
+    negatedProposition  ir al estado 40
+    operation           ir al estado 41
+    product             ir al estado 42
+    signedOperand       ir al estado 43
+    operand             ir al estado 44
 
 
 Estado 2
 
-   12 return: RETURN . expression
+   13 return: RETURN . expression
 
-    error       desplazar e ir al estado 20
-    READ        desplazar e ir al estado 21
-    NOT         desplazar e ir al estado 22
-    VERDADERO   desplazar e ir al estado 23
-    FALSO       desplazar e ir al estado 24
-    IDENTIFIER  desplazar e ir al estado 25
-    FLOAT       desplazar e ir al estado 26
-    CHARACTER   desplazar e ir al estado 27
-    INTEGER     desplazar e ir al estado 28
-    STRING      desplazar e ir al estado 29
-    '+'         desplazar e ir al estado 30
-    '-'         desplazar e ir al estado 31
-    '('         desplazar e ir al estado 32
+    error       desplazar e ir al estado 22
+    READ        desplazar e ir al estado 23
+    NOT         desplazar e ir al estado 24
+    VERDADERO   desplazar e ir al estado 25
+    FALSO       desplazar e ir al estado 26
+    IDENTIFIER  desplazar e ir al estado 27
+    FLOAT       desplazar e ir al estado 28
+    CHARACTER   desplazar e ir al estado 29
+    INTEGER     desplazar e ir al estado 30
+    '+'         desplazar e ir al estado 32
+    '-'         desplazar e ir al estado 33
+    '('         desplazar e ir al estado 34
 
-    functionCall        ir al estado 33
-    functionHeaderOpen  ir al estado 34
-    expression          ir al estado 43
-    proposition         ir al estado 36
-    andProposition      ir al estado 37
-    negatedProposition  ir al estado 38
-    operation           ir al estado 39
-    product             ir al estado 40
-    signedOperand       ir al estado 41
-    operand             ir al estado 42
+    functionCall        ir al estado 35
+    functionHeaderOpen  ir al estado 36
+    expression          ir al estado 45
+    proposition         ir al estado 38
+    andProposition      ir al estado 39
+    negatedProposition  ir al estado 40
+    operation           ir al estado 41
+    product             ir al estado 42
+    signedOperand       ir al estado 43
+    operand             ir al estado 44
 
 
 Estado 3
 
-   37 loopHeader: WHILE . expression ':'
-   41 loop: WHILE . expression error $@3 instructions END
+   40 loopKeyword: WHILE .
 
-    error       desplazar e ir al estado 20
-    READ        desplazar e ir al estado 21
-    NOT         desplazar e ir al estado 22
-    VERDADERO   desplazar e ir al estado 23
-    FALSO       desplazar e ir al estado 24
-    IDENTIFIER  desplazar e ir al estado 25
-    FLOAT       desplazar e ir al estado 26
-    CHARACTER   desplazar e ir al estado 27
-    INTEGER     desplazar e ir al estado 28
-    STRING      desplazar e ir al estado 29
-    '+'         desplazar e ir al estado 30
-    '-'         desplazar e ir al estado 31
-    '('         desplazar e ir al estado 32
-
-    functionCall        ir al estado 33
-    functionHeaderOpen  ir al estado 34
-    expression          ir al estado 44
-    proposition         ir al estado 36
-    andProposition      ir al estado 37
-    negatedProposition  ir al estado 38
-    operation           ir al estado 39
-    product             ir al estado 40
-    signedOperand       ir al estado 41
-    operand             ir al estado 42
+    $default  reduce usando la regla 40 (loopKeyword)
 
 
 Estado 4
 
-   28 controlHeader: IF . expression ':'
-   34 control: IF . expression error $@1 instructions END
+   30 controlHeader: IF . expression ':'
+   37 control: IF . expression error $@1 instructions END
 
-    error       desplazar e ir al estado 20
-    READ        desplazar e ir al estado 21
-    NOT         desplazar e ir al estado 22
-    VERDADERO   desplazar e ir al estado 23
-    FALSO       desplazar e ir al estado 24
-    IDENTIFIER  desplazar e ir al estado 25
-    FLOAT       desplazar e ir al estado 26
-    CHARACTER   desplazar e ir al estado 27
-    INTEGER     desplazar e ir al estado 28
-    STRING      desplazar e ir al estado 29
-    '+'         desplazar e ir al estado 30
-    '-'         desplazar e ir al estado 31
-    '('         desplazar e ir al estado 32
+    error       desplazar e ir al estado 22
+    READ        desplazar e ir al estado 23
+    NOT         desplazar e ir al estado 24
+    VERDADERO   desplazar e ir al estado 25
+    FALSO       desplazar e ir al estado 26
+    IDENTIFIER  desplazar e ir al estado 27
+    FLOAT       desplazar e ir al estado 28
+    CHARACTER   desplazar e ir al estado 29
+    INTEGER     desplazar e ir al estado 30
+    '+'         desplazar e ir al estado 32
+    '-'         desplazar e ir al estado 33
+    '('         desplazar e ir al estado 34
 
-    functionCall        ir al estado 33
-    functionHeaderOpen  ir al estado 34
-    expression          ir al estado 45
-    proposition         ir al estado 36
-    andProposition      ir al estado 37
-    negatedProposition  ir al estado 38
-    operation           ir al estado 39
-    product             ir al estado 40
-    signedOperand       ir al estado 41
-    operand             ir al estado 42
+    functionCall        ir al estado 35
+    functionHeaderOpen  ir al estado 36
+    expression          ir al estado 46
+    proposition         ir al estado 38
+    andProposition      ir al estado 39
+    negatedProposition  ir al estado 40
+    operation           ir al estado 41
+    product             ir al estado 42
+    signedOperand       ir al estado 43
+    operand             ir al estado 44
 
 
 Estado 5
 
-   13 assignment: IDENTIFIER . '=' expression
-   14 bareFunctionCall: IDENTIFIER .
-   15                 | IDENTIFIER . '(' ')'
-   19 functionHeaderOpen: IDENTIFIER . '('
-   20 functionHeader: IDENTIFIER . ':'
+   14 assignment: IDENTIFIER . '=' expression
+   15 bareFunctionCall: IDENTIFIER .
+   16                 | IDENTIFIER . '(' ')'
+   21 functionHeaderOpen: IDENTIFIER . '('
+   22 functionHeader: IDENTIFIER . ':'
 
-    '='  desplazar e ir al estado 46
-    '('  desplazar e ir al estado 47
-    ':'  desplazar e ir al estado 48
+    '='  desplazar e ir al estado 47
+    '('  desplazar e ir al estado 48
+    ':'  desplazar e ir al estado 49
 
-    $default  reduce usando la regla 14 (bareFunctionCall)
+    $default  reduce usando la regla 15 (bareFunctionCall)
 
 
 Estado 6
 
     0 $accept: program . $end
 
-    $end  desplazar e ir al estado 49
+    $end  desplazar e ir al estado 50
 
 
 Estado 7
@@ -417,7 +407,7 @@ Estado 7
     1 program: instructions .
     3 instructions: instructions . NEWINSTRUCTION instruction
 
-    NEWINSTRUCTION  desplazar e ir al estado 50
+    NEWINSTRUCTION  desplazar e ir al estado 51
 
     $default  reduce usando la regla 1 (program)
 
@@ -431,9 +421,9 @@ Estado 8
 
 Estado 9
 
-   11 instruction: return .
+   12 instruction: return .
 
-    $default  reduce usando la regla 11 (instruction)
+    $default  reduce usando la regla 12 (instruction)
 
 
 Estado 10
@@ -445,31 +435,63 @@ Estado 10
 
 Estado 11
 
-    9 instruction: bareFunctionCall .
+   10 instruction: bareFunctionCall .
 
-    $default  reduce usando la regla 9 (instruction)
+    $default  reduce usando la regla 10 (instruction)
 
 
 Estado 12
 
-    8 instruction: writeCall .
+    8 instruction: functionCall .
 
     $default  reduce usando la regla 8 (instruction)
 
 
 Estado 13
 
-   21 functionHeader: functionHeaderOpen . definingParameter ')' ':'
+    9 instruction: writeCall .
 
-    IDENTIFIER  desplazar e ir al estado 51
-
-    definingParameter  ir al estado 52
+    $default  reduce usando la regla 9 (instruction)
 
 
 Estado 14
 
-   22 functionDefinition: functionHeader . instructions END
-   23                   | functionHeader . instructions error
+   17 functionCall: functionHeaderOpen . parameter ')'
+   18             | functionHeaderOpen . parameter error
+   23 functionHeader: functionHeaderOpen . definingParameter ')' ':'
+
+    error       desplazar e ir al estado 22
+    READ        desplazar e ir al estado 23
+    NOT         desplazar e ir al estado 24
+    VERDADERO   desplazar e ir al estado 25
+    FALSO       desplazar e ir al estado 26
+    IDENTIFIER  desplazar e ir al estado 27
+    FLOAT       desplazar e ir al estado 28
+    CHARACTER   desplazar e ir al estado 29
+    INTEGER     desplazar e ir al estado 30
+    TYPE        desplazar e ir al estado 52
+    '+'         desplazar e ir al estado 32
+    '-'         desplazar e ir al estado 33
+    '('         desplazar e ir al estado 34
+
+    functionCall        ir al estado 35
+    functionHeaderOpen  ir al estado 36
+    definingParameter   ir al estado 53
+    parameter           ir al estado 54
+    expression          ir al estado 55
+    proposition         ir al estado 38
+    andProposition      ir al estado 39
+    negatedProposition  ir al estado 40
+    operation           ir al estado 41
+    product             ir al estado 42
+    signedOperand       ir al estado 43
+    operand             ir al estado 44
+
+
+Estado 15
+
+   24 functionDefinition: functionHeader . instructions END
+   25                   | functionHeader . instructions error
 
     WRITE       desplazar e ir al estado 1
     RETURN      desplazar e ir al estado 2
@@ -477,37 +499,39 @@ Estado 14
     IF          desplazar e ir al estado 4
     IDENTIFIER  desplazar e ir al estado 5
 
-    $default  reduce usando la regla 10 (instruction)
+    $default  reduce usando la regla 11 (instruction)
 
-    instructions        ir al estado 53
+    instructions        ir al estado 56
     instruction         ir al estado 8
     return              ir al estado 9
     assignment          ir al estado 10
     bareFunctionCall    ir al estado 11
-    writeCall           ir al estado 12
-    functionHeaderOpen  ir al estado 13
-    functionHeader      ir al estado 14
-    functionDefinition  ir al estado 15
-    controlHeader       ir al estado 16
-    control             ir al estado 17
-    loopHeader          ir al estado 18
-    loop                ir al estado 19
+    functionCall        ir al estado 12
+    writeCall           ir al estado 13
+    functionHeaderOpen  ir al estado 14
+    functionHeader      ir al estado 15
+    functionDefinition  ir al estado 16
+    controlHeader       ir al estado 17
+    control             ir al estado 18
+    loopKeyword         ir al estado 19
+    loopHeader          ir al estado 20
+    loop                ir al estado 21
 
 
-Estado 15
+Estado 16
 
     7 instruction: functionDefinition .
 
     $default  reduce usando la regla 7 (instruction)
 
 
-Estado 16
+Estado 17
 
-   29 control: controlHeader . instructions ELSE ':' instructions END
-   30        | controlHeader . instructions END
-   31        | controlHeader . instructions error
-   32        | controlHeader . instructions ELSE ':' instructions error
-   36        | controlHeader . instructions ELSE error $@2 instructions END
+   32 control: controlHeader . instructions elseHeader instructions END
+   33        | controlHeader . instructions END
+   34        | controlHeader . instructions error
+   35        | controlHeader . instructions elseHeader instructions error
+   39        | controlHeader . instructions ELSE error $@2 instructions END
 
     WRITE       desplazar e ir al estado 1
     RETURN      desplazar e ir al estado 2
@@ -515,34 +539,66 @@ Estado 16
     IF          desplazar e ir al estado 4
     IDENTIFIER  desplazar e ir al estado 5
 
-    $default  reduce usando la regla 10 (instruction)
+    $default  reduce usando la regla 11 (instruction)
 
-    instructions        ir al estado 54
+    instructions        ir al estado 57
     instruction         ir al estado 8
     return              ir al estado 9
     assignment          ir al estado 10
     bareFunctionCall    ir al estado 11
-    writeCall           ir al estado 12
-    functionHeaderOpen  ir al estado 13
-    functionHeader      ir al estado 14
-    functionDefinition  ir al estado 15
-    controlHeader       ir al estado 16
-    control             ir al estado 17
-    loopHeader          ir al estado 18
-    loop                ir al estado 19
+    functionCall        ir al estado 12
+    writeCall           ir al estado 13
+    functionHeaderOpen  ir al estado 14
+    functionHeader      ir al estado 15
+    functionDefinition  ir al estado 16
+    controlHeader       ir al estado 17
+    control             ir al estado 18
+    loopKeyword         ir al estado 19
+    loopHeader          ir al estado 20
+    loop                ir al estado 21
 
 
-Estado 17
+Estado 18
 
     5 instruction: control .
 
     $default  reduce usando la regla 5 (instruction)
 
 
-Estado 18
+Estado 19
 
-   38 loop: loopHeader . instructions END
-   39     | loopHeader . instructions error
+   41 loopHeader: loopKeyword . expression ':'
+   45 loop: loopKeyword . expression error $@3 instructions END
+
+    error       desplazar e ir al estado 22
+    READ        desplazar e ir al estado 23
+    NOT         desplazar e ir al estado 24
+    VERDADERO   desplazar e ir al estado 25
+    FALSO       desplazar e ir al estado 26
+    IDENTIFIER  desplazar e ir al estado 27
+    FLOAT       desplazar e ir al estado 28
+    CHARACTER   desplazar e ir al estado 29
+    INTEGER     desplazar e ir al estado 30
+    '+'         desplazar e ir al estado 32
+    '-'         desplazar e ir al estado 33
+    '('         desplazar e ir al estado 34
+
+    functionCall        ir al estado 35
+    functionHeaderOpen  ir al estado 36
+    expression          ir al estado 58
+    proposition         ir al estado 38
+    andProposition      ir al estado 39
+    negatedProposition  ir al estado 40
+    operation           ir al estado 41
+    product             ir al estado 42
+    signedOperand       ir al estado 43
+    operand             ir al estado 44
+
+
+Estado 20
+
+   42 loop: loopHeader . instructions END
+   43     | loopHeader . instructions error
 
     WRITE       desplazar e ir al estado 1
     RETURN      desplazar e ir al estado 2
@@ -550,433 +606,410 @@ Estado 18
     IF          desplazar e ir al estado 4
     IDENTIFIER  desplazar e ir al estado 5
 
-    $default  reduce usando la regla 10 (instruction)
+    $default  reduce usando la regla 11 (instruction)
 
-    instructions        ir al estado 55
+    instructions        ir al estado 59
     instruction         ir al estado 8
     return              ir al estado 9
     assignment          ir al estado 10
     bareFunctionCall    ir al estado 11
-    writeCall           ir al estado 12
-    functionHeaderOpen  ir al estado 13
-    functionHeader      ir al estado 14
-    functionDefinition  ir al estado 15
-    controlHeader       ir al estado 16
-    control             ir al estado 17
-    loopHeader          ir al estado 18
-    loop                ir al estado 19
+    functionCall        ir al estado 12
+    writeCall           ir al estado 13
+    functionHeaderOpen  ir al estado 14
+    functionHeader      ir al estado 15
+    functionDefinition  ir al estado 16
+    controlHeader       ir al estado 17
+    control             ir al estado 18
+    loopKeyword         ir al estado 19
+    loopHeader          ir al estado 20
+    loop                ir al estado 21
 
 
-Estado 19
+Estado 21
 
     6 instruction: loop .
 
     $default  reduce usando la regla 6 (instruction)
 
 
-Estado 20
-
-   65 signedOperand: error .
-
-    $default  reduce usando la regla 65 (signedOperand)
-
-
-Estado 21
-
-   72 operand: READ .
-
-    $default  reduce usando la regla 72 (operand)
-
-
 Estado 22
 
-   53 negatedProposition: NOT . operation
+   69 signedOperand: error .
 
-    error       desplazar e ir al estado 20
-    READ        desplazar e ir al estado 21
-    VERDADERO   desplazar e ir al estado 23
-    FALSO       desplazar e ir al estado 24
-    IDENTIFIER  desplazar e ir al estado 25
-    FLOAT       desplazar e ir al estado 26
-    CHARACTER   desplazar e ir al estado 27
-    INTEGER     desplazar e ir al estado 28
-    STRING      desplazar e ir al estado 29
-    '+'         desplazar e ir al estado 30
-    '-'         desplazar e ir al estado 31
-    '('         desplazar e ir al estado 32
-
-    functionCall        ir al estado 33
-    functionHeaderOpen  ir al estado 34
-    operation           ir al estado 56
-    product             ir al estado 40
-    signedOperand       ir al estado 41
-    operand             ir al estado 42
+    $default  reduce usando la regla 69 (signedOperand)
 
 
 Estado 23
 
-   73 operand: VERDADERO .
+   75 operand: READ . TYPE
+   76        | READ . error
 
-    $default  reduce usando la regla 73 (operand)
+    error  desplazar e ir al estado 60
+    TYPE   desplazar e ir al estado 61
 
 
 Estado 24
 
-   74 operand: FALSO .
+   57 negatedProposition: NOT . operation
 
-    $default  reduce usando la regla 74 (operand)
+    error       desplazar e ir al estado 22
+    READ        desplazar e ir al estado 23
+    VERDADERO   desplazar e ir al estado 25
+    FALSO       desplazar e ir al estado 26
+    IDENTIFIER  desplazar e ir al estado 27
+    FLOAT       desplazar e ir al estado 28
+    CHARACTER   desplazar e ir al estado 29
+    INTEGER     desplazar e ir al estado 30
+    '+'         desplazar e ir al estado 32
+    '-'         desplazar e ir al estado 33
+    '('         desplazar e ir al estado 34
+
+    functionCall        ir al estado 35
+    functionHeaderOpen  ir al estado 36
+    operation           ir al estado 62
+    product             ir al estado 42
+    signedOperand       ir al estado 43
+    operand             ir al estado 44
 
 
 Estado 25
 
-   19 functionHeaderOpen: IDENTIFIER . '('
-   70 operand: IDENTIFIER .
+   77 operand: VERDADERO .
 
-    '('  desplazar e ir al estado 57
-
-    $default  reduce usando la regla 70 (operand)
+    $default  reduce usando la regla 77 (operand)
 
 
 Estado 26
 
-   66 operand: FLOAT .
+   78 operand: FALSO .
 
-    $default  reduce usando la regla 66 (operand)
+    $default  reduce usando la regla 78 (operand)
 
 
 Estado 27
 
-   69 operand: CHARACTER .
+   21 functionHeaderOpen: IDENTIFIER . '('
+   73 operand: IDENTIFIER .
 
-    $default  reduce usando la regla 69 (operand)
+    '('  desplazar e ir al estado 63
+
+    $default  reduce usando la regla 73 (operand)
 
 
 Estado 28
 
-   67 operand: INTEGER .
+   70 operand: FLOAT .
 
-    $default  reduce usando la regla 67 (operand)
+    $default  reduce usando la regla 70 (operand)
 
 
 Estado 29
 
-   68 operand: STRING .
+   72 operand: CHARACTER .
 
-    $default  reduce usando la regla 68 (operand)
+    $default  reduce usando la regla 72 (operand)
 
 
 Estado 30
 
-   63 signedOperand: '+' . operand
-
-    READ        desplazar e ir al estado 21
-    VERDADERO   desplazar e ir al estado 23
-    FALSO       desplazar e ir al estado 24
-    IDENTIFIER  desplazar e ir al estado 25
-    FLOAT       desplazar e ir al estado 26
-    CHARACTER   desplazar e ir al estado 27
-    INTEGER     desplazar e ir al estado 28
-    STRING      desplazar e ir al estado 29
-    '('         desplazar e ir al estado 32
-
-    functionCall        ir al estado 33
-    functionHeaderOpen  ir al estado 34
-    operand             ir al estado 58
-
-
-Estado 31
-
-   62 signedOperand: '-' . operand
-
-    READ        desplazar e ir al estado 21
-    VERDADERO   desplazar e ir al estado 23
-    FALSO       desplazar e ir al estado 24
-    IDENTIFIER  desplazar e ir al estado 25
-    FLOAT       desplazar e ir al estado 26
-    CHARACTER   desplazar e ir al estado 27
-    INTEGER     desplazar e ir al estado 28
-    STRING      desplazar e ir al estado 29
-    '('         desplazar e ir al estado 32
-
-    functionCall        ir al estado 33
-    functionHeaderOpen  ir al estado 34
-    operand             ir al estado 59
-
-
-Estado 32
-
-   75 operand: '(' . expression ')'
-   76        | '(' . expression error
-
-    error       desplazar e ir al estado 20
-    READ        desplazar e ir al estado 21
-    NOT         desplazar e ir al estado 22
-    VERDADERO   desplazar e ir al estado 23
-    FALSO       desplazar e ir al estado 24
-    IDENTIFIER  desplazar e ir al estado 25
-    FLOAT       desplazar e ir al estado 26
-    CHARACTER   desplazar e ir al estado 27
-    INTEGER     desplazar e ir al estado 28
-    STRING      desplazar e ir al estado 29
-    '+'         desplazar e ir al estado 30
-    '-'         desplazar e ir al estado 31
-    '('         desplazar e ir al estado 32
-
-    functionCall        ir al estado 33
-    functionHeaderOpen  ir al estado 34
-    expression          ir al estado 60
-    proposition         ir al estado 36
-    andProposition      ir al estado 37
-    negatedProposition  ir al estado 38
-    operation           ir al estado 39
-    product             ir al estado 40
-    signedOperand       ir al estado 41
-    operand             ir al estado 42
-
-
-Estado 33
-
-   71 operand: functionCall .
+   71 operand: INTEGER .
 
     $default  reduce usando la regla 71 (operand)
 
 
+Estado 31
+
+   20 writeCall: WRITE STRING .
+
+    $default  reduce usando la regla 20 (writeCall)
+
+
+Estado 32
+
+   67 signedOperand: '+' . operand
+
+    READ        desplazar e ir al estado 23
+    VERDADERO   desplazar e ir al estado 25
+    FALSO       desplazar e ir al estado 26
+    IDENTIFIER  desplazar e ir al estado 27
+    FLOAT       desplazar e ir al estado 28
+    CHARACTER   desplazar e ir al estado 29
+    INTEGER     desplazar e ir al estado 30
+    '('         desplazar e ir al estado 34
+
+    functionCall        ir al estado 35
+    functionHeaderOpen  ir al estado 36
+    operand             ir al estado 64
+
+
+Estado 33
+
+   66 signedOperand: '-' . operand
+
+    READ        desplazar e ir al estado 23
+    VERDADERO   desplazar e ir al estado 25
+    FALSO       desplazar e ir al estado 26
+    IDENTIFIER  desplazar e ir al estado 27
+    FLOAT       desplazar e ir al estado 28
+    CHARACTER   desplazar e ir al estado 29
+    INTEGER     desplazar e ir al estado 30
+    '('         desplazar e ir al estado 34
+
+    functionCall        ir al estado 35
+    functionHeaderOpen  ir al estado 36
+    operand             ir al estado 65
+
+
 Estado 34
 
-   16 functionCall: functionHeaderOpen . parameter ')'
-   17             | functionHeaderOpen . parameter error
+   79 operand: '(' . expression ')'
+   80        | '(' . expression error
 
-    error       desplazar e ir al estado 20
-    READ        desplazar e ir al estado 21
-    NOT         desplazar e ir al estado 22
-    VERDADERO   desplazar e ir al estado 23
-    FALSO       desplazar e ir al estado 24
-    IDENTIFIER  desplazar e ir al estado 25
-    FLOAT       desplazar e ir al estado 26
-    CHARACTER   desplazar e ir al estado 27
-    INTEGER     desplazar e ir al estado 28
-    STRING      desplazar e ir al estado 29
-    '+'         desplazar e ir al estado 30
-    '-'         desplazar e ir al estado 31
-    '('         desplazar e ir al estado 32
+    error       desplazar e ir al estado 22
+    READ        desplazar e ir al estado 23
+    NOT         desplazar e ir al estado 24
+    VERDADERO   desplazar e ir al estado 25
+    FALSO       desplazar e ir al estado 26
+    IDENTIFIER  desplazar e ir al estado 27
+    FLOAT       desplazar e ir al estado 28
+    CHARACTER   desplazar e ir al estado 29
+    INTEGER     desplazar e ir al estado 30
+    '+'         desplazar e ir al estado 32
+    '-'         desplazar e ir al estado 33
+    '('         desplazar e ir al estado 34
 
-    functionCall        ir al estado 33
-    functionHeaderOpen  ir al estado 34
-    parameter           ir al estado 61
-    expression          ir al estado 62
-    proposition         ir al estado 36
-    andProposition      ir al estado 37
-    negatedProposition  ir al estado 38
-    operation           ir al estado 39
-    product             ir al estado 40
-    signedOperand       ir al estado 41
-    operand             ir al estado 42
+    functionCall        ir al estado 35
+    functionHeaderOpen  ir al estado 36
+    expression          ir al estado 66
+    proposition         ir al estado 38
+    andProposition      ir al estado 39
+    negatedProposition  ir al estado 40
+    operation           ir al estado 41
+    product             ir al estado 42
+    signedOperand       ir al estado 43
+    operand             ir al estado 44
 
 
 Estado 35
 
-   18 writeCall: WRITE expression .
-   42 expression: expression . EQUALS expression
-   43           | expression . DIFFERENT expression
-   44           | expression . GREATER expression
-   45           | expression . LESS expression
-   46           | expression . GREATEREQUAL expression
-   47           | expression . LESSEQUAL expression
+   74 operand: functionCall .
 
-    GREATER       desplazar e ir al estado 63
-    LESS          desplazar e ir al estado 64
-    EQUALS        desplazar e ir al estado 65
-    GREATEREQUAL  desplazar e ir al estado 66
-    LESSEQUAL     desplazar e ir al estado 67
-    DIFFERENT     desplazar e ir al estado 68
-
-    $default  reduce usando la regla 18 (writeCall)
+    $default  reduce usando la regla 74 (operand)
 
 
 Estado 36
 
-   48 expression: proposition .
-   49 proposition: proposition . 'o' andProposition
+   17 functionCall: functionHeaderOpen . parameter ')'
+   18             | functionHeaderOpen . parameter error
 
-    'o'  desplazar e ir al estado 69
+    error       desplazar e ir al estado 22
+    READ        desplazar e ir al estado 23
+    NOT         desplazar e ir al estado 24
+    VERDADERO   desplazar e ir al estado 25
+    FALSO       desplazar e ir al estado 26
+    IDENTIFIER  desplazar e ir al estado 27
+    FLOAT       desplazar e ir al estado 28
+    CHARACTER   desplazar e ir al estado 29
+    INTEGER     desplazar e ir al estado 30
+    '+'         desplazar e ir al estado 32
+    '-'         desplazar e ir al estado 33
+    '('         desplazar e ir al estado 34
 
-    $default  reduce usando la regla 48 (expression)
+    functionCall        ir al estado 35
+    functionHeaderOpen  ir al estado 36
+    parameter           ir al estado 54
+    expression          ir al estado 55
+    proposition         ir al estado 38
+    andProposition      ir al estado 39
+    negatedProposition  ir al estado 40
+    operation           ir al estado 41
+    product             ir al estado 42
+    signedOperand       ir al estado 43
+    operand             ir al estado 44
 
 
 Estado 37
 
-   50 proposition: andProposition .
-   51 andProposition: andProposition . 'y' negatedProposition
+   19 writeCall: WRITE expression .
+   46 expression: expression . EQUALS expression
+   47           | expression . DIFFERENT expression
+   48           | expression . GREATER expression
+   49           | expression . LESS expression
+   50           | expression . GREATEREQUAL expression
+   51           | expression . LESSEQUAL expression
 
-    'y'  desplazar e ir al estado 70
+    GREATER       desplazar e ir al estado 67
+    LESS          desplazar e ir al estado 68
+    EQUALS        desplazar e ir al estado 69
+    GREATEREQUAL  desplazar e ir al estado 70
+    LESSEQUAL     desplazar e ir al estado 71
+    DIFFERENT     desplazar e ir al estado 72
 
-    $default  reduce usando la regla 50 (proposition)
+    $default  reduce usando la regla 19 (writeCall)
 
 
 Estado 38
 
-   52 andProposition: negatedProposition .
+   52 expression: proposition .
+   53 proposition: proposition . 'o' andProposition
 
-    $default  reduce usando la regla 52 (andProposition)
+    'o'  desplazar e ir al estado 73
+
+    $default  reduce usando la regla 52 (expression)
 
 
 Estado 39
 
-   54 negatedProposition: operation .
-   55 operation: operation . '+' product
-   56          | operation . '-' product
+   54 proposition: andProposition .
+   55 andProposition: andProposition . 'y' negatedProposition
 
-    '+'  desplazar e ir al estado 71
-    '-'  desplazar e ir al estado 72
+    'y'  desplazar e ir al estado 74
 
-    $default  reduce usando la regla 54 (negatedProposition)
+    $default  reduce usando la regla 54 (proposition)
 
 
 Estado 40
 
-   57 operation: product .
-   58 product: product . '*' signedOperand
-   59        | product . '/' signedOperand
-   60        | product . MODULO signedOperand
+   56 andProposition: negatedProposition .
 
-    MODULO  desplazar e ir al estado 73
-    '*'     desplazar e ir al estado 74
-    '/'     desplazar e ir al estado 75
-
-    $default  reduce usando la regla 57 (operation)
+    $default  reduce usando la regla 56 (andProposition)
 
 
 Estado 41
 
-   61 product: signedOperand .
+   58 negatedProposition: operation .
+   59 operation: operation . '+' product
+   60          | operation . '-' product
 
-    $default  reduce usando la regla 61 (product)
+    '+'  desplazar e ir al estado 75
+    '-'  desplazar e ir al estado 76
+
+    $default  reduce usando la regla 58 (negatedProposition)
 
 
 Estado 42
 
-   64 signedOperand: operand .
+   61 operation: product .
+   62 product: product . '*' signedOperand
+   63        | product . '/' signedOperand
+   64        | product . MODULO signedOperand
 
-    $default  reduce usando la regla 64 (signedOperand)
+    MODULO  desplazar e ir al estado 77
+    '*'     desplazar e ir al estado 78
+    '/'     desplazar e ir al estado 79
+
+    $default  reduce usando la regla 61 (operation)
 
 
 Estado 43
 
-   12 return: RETURN expression .
-   42 expression: expression . EQUALS expression
-   43           | expression . DIFFERENT expression
-   44           | expression . GREATER expression
-   45           | expression . LESS expression
-   46           | expression . GREATEREQUAL expression
-   47           | expression . LESSEQUAL expression
+   65 product: signedOperand .
 
-    GREATER       desplazar e ir al estado 63
-    LESS          desplazar e ir al estado 64
-    EQUALS        desplazar e ir al estado 65
-    GREATEREQUAL  desplazar e ir al estado 66
-    LESSEQUAL     desplazar e ir al estado 67
-    DIFFERENT     desplazar e ir al estado 68
-
-    $default  reduce usando la regla 12 (return)
+    $default  reduce usando la regla 65 (product)
 
 
 Estado 44
 
-   37 loopHeader: WHILE expression . ':'
-   41 loop: WHILE expression . error $@3 instructions END
-   42 expression: expression . EQUALS expression
-   43           | expression . DIFFERENT expression
-   44           | expression . GREATER expression
-   45           | expression . LESS expression
-   46           | expression . GREATEREQUAL expression
-   47           | expression . LESSEQUAL expression
+   68 signedOperand: operand .
 
-    error         desplazar e ir al estado 76
-    GREATER       desplazar e ir al estado 63
-    LESS          desplazar e ir al estado 64
-    EQUALS        desplazar e ir al estado 65
-    GREATEREQUAL  desplazar e ir al estado 66
-    LESSEQUAL     desplazar e ir al estado 67
-    DIFFERENT     desplazar e ir al estado 68
-    ':'           desplazar e ir al estado 77
+    $default  reduce usando la regla 68 (signedOperand)
 
 
 Estado 45
 
-   28 controlHeader: IF expression . ':'
-   34 control: IF expression . error $@1 instructions END
-   42 expression: expression . EQUALS expression
-   43           | expression . DIFFERENT expression
-   44           | expression . GREATER expression
-   45           | expression . LESS expression
-   46           | expression . GREATEREQUAL expression
-   47           | expression . LESSEQUAL expression
+   13 return: RETURN expression .
+   46 expression: expression . EQUALS expression
+   47           | expression . DIFFERENT expression
+   48           | expression . GREATER expression
+   49           | expression . LESS expression
+   50           | expression . GREATEREQUAL expression
+   51           | expression . LESSEQUAL expression
 
-    error         desplazar e ir al estado 78
-    GREATER       desplazar e ir al estado 63
-    LESS          desplazar e ir al estado 64
-    EQUALS        desplazar e ir al estado 65
-    GREATEREQUAL  desplazar e ir al estado 66
-    LESSEQUAL     desplazar e ir al estado 67
-    DIFFERENT     desplazar e ir al estado 68
-    ':'           desplazar e ir al estado 79
+    GREATER       desplazar e ir al estado 67
+    LESS          desplazar e ir al estado 68
+    EQUALS        desplazar e ir al estado 69
+    GREATEREQUAL  desplazar e ir al estado 70
+    LESSEQUAL     desplazar e ir al estado 71
+    DIFFERENT     desplazar e ir al estado 72
+
+    $default  reduce usando la regla 13 (return)
 
 
 Estado 46
 
-   13 assignment: IDENTIFIER '=' . expression
+   30 controlHeader: IF expression . ':'
+   37 control: IF expression . error $@1 instructions END
+   46 expression: expression . EQUALS expression
+   47           | expression . DIFFERENT expression
+   48           | expression . GREATER expression
+   49           | expression . LESS expression
+   50           | expression . GREATEREQUAL expression
+   51           | expression . LESSEQUAL expression
 
-    error       desplazar e ir al estado 20
-    READ        desplazar e ir al estado 21
-    NOT         desplazar e ir al estado 22
-    VERDADERO   desplazar e ir al estado 23
-    FALSO       desplazar e ir al estado 24
-    IDENTIFIER  desplazar e ir al estado 25
-    FLOAT       desplazar e ir al estado 26
-    CHARACTER   desplazar e ir al estado 27
-    INTEGER     desplazar e ir al estado 28
-    STRING      desplazar e ir al estado 29
-    '+'         desplazar e ir al estado 30
-    '-'         desplazar e ir al estado 31
-    '('         desplazar e ir al estado 32
-
-    functionCall        ir al estado 33
-    functionHeaderOpen  ir al estado 34
-    expression          ir al estado 80
-    proposition         ir al estado 36
-    andProposition      ir al estado 37
-    negatedProposition  ir al estado 38
-    operation           ir al estado 39
-    product             ir al estado 40
-    signedOperand       ir al estado 41
-    operand             ir al estado 42
+    error         desplazar e ir al estado 80
+    GREATER       desplazar e ir al estado 67
+    LESS          desplazar e ir al estado 68
+    EQUALS        desplazar e ir al estado 69
+    GREATEREQUAL  desplazar e ir al estado 70
+    LESSEQUAL     desplazar e ir al estado 71
+    DIFFERENT     desplazar e ir al estado 72
+    ':'           desplazar e ir al estado 81
 
 
 Estado 47
 
-   15 bareFunctionCall: IDENTIFIER '(' . ')'
-   19 functionHeaderOpen: IDENTIFIER '(' .
+   14 assignment: IDENTIFIER '=' . expression
 
-    ')'  desplazar e ir al estado 81
+    error       desplazar e ir al estado 22
+    READ        desplazar e ir al estado 23
+    NOT         desplazar e ir al estado 24
+    VERDADERO   desplazar e ir al estado 25
+    FALSO       desplazar e ir al estado 26
+    IDENTIFIER  desplazar e ir al estado 27
+    FLOAT       desplazar e ir al estado 28
+    CHARACTER   desplazar e ir al estado 29
+    INTEGER     desplazar e ir al estado 30
+    '+'         desplazar e ir al estado 32
+    '-'         desplazar e ir al estado 33
+    '('         desplazar e ir al estado 34
 
-    $default  reduce usando la regla 19 (functionHeaderOpen)
+    functionCall        ir al estado 35
+    functionHeaderOpen  ir al estado 36
+    expression          ir al estado 82
+    proposition         ir al estado 38
+    andProposition      ir al estado 39
+    negatedProposition  ir al estado 40
+    operation           ir al estado 41
+    product             ir al estado 42
+    signedOperand       ir al estado 43
+    operand             ir al estado 44
 
 
 Estado 48
 
-   20 functionHeader: IDENTIFIER ':' .
+   16 bareFunctionCall: IDENTIFIER '(' . ')'
+   21 functionHeaderOpen: IDENTIFIER '(' .
 
-    $default  reduce usando la regla 20 (functionHeader)
+    ')'  desplazar e ir al estado 83
+
+    $default  reduce usando la regla 21 (functionHeaderOpen)
 
 
 Estado 49
+
+   22 functionHeader: IDENTIFIER ':' .
+
+    $default  reduce usando la regla 22 (functionHeader)
+
+
+Estado 50
 
     0 $accept: program $end .
 
     $default  aceptar
 
 
-Estado 50
+Estado 51
 
     3 instructions: instructions NEWINSTRUCTION . instruction
 
@@ -986,1086 +1019,1139 @@ Estado 50
     IF          desplazar e ir al estado 4
     IDENTIFIER  desplazar e ir al estado 5
 
-    $default  reduce usando la regla 10 (instruction)
+    $default  reduce usando la regla 11 (instruction)
 
-    instruction         ir al estado 82
+    instruction         ir al estado 84
     return              ir al estado 9
     assignment          ir al estado 10
     bareFunctionCall    ir al estado 11
-    writeCall           ir al estado 12
-    functionHeaderOpen  ir al estado 13
-    functionHeader      ir al estado 14
-    functionDefinition  ir al estado 15
-    controlHeader       ir al estado 16
-    control             ir al estado 17
-    loopHeader          ir al estado 18
-    loop                ir al estado 19
-
-
-Estado 51
-
-   25 definingParameter: IDENTIFIER .
-
-    $default  reduce usando la regla 25 (definingParameter)
+    functionCall        ir al estado 12
+    writeCall           ir al estado 13
+    functionHeaderOpen  ir al estado 14
+    functionHeader      ir al estado 15
+    functionDefinition  ir al estado 16
+    controlHeader       ir al estado 17
+    control             ir al estado 18
+    loopKeyword         ir al estado 19
+    loopHeader          ir al estado 20
+    loop                ir al estado 21
 
 
 Estado 52
 
-   21 functionHeader: functionHeaderOpen definingParameter . ')' ':'
-   24 definingParameter: definingParameter . ',' IDENTIFIER
+   27 definingParameter: TYPE . IDENTIFIER
 
-    ')'  desplazar e ir al estado 83
-    ','  desplazar e ir al estado 84
+    IDENTIFIER  desplazar e ir al estado 85
 
 
 Estado 53
 
-    3 instructions: instructions . NEWINSTRUCTION instruction
-   22 functionDefinition: functionHeader instructions . END
-   23                   | functionHeader instructions . error
+   23 functionHeader: functionHeaderOpen definingParameter . ')' ':'
+   26 definingParameter: definingParameter . ',' TYPE IDENTIFIER
 
-    error           desplazar e ir al estado 85
-    END             desplazar e ir al estado 86
-    NEWINSTRUCTION  desplazar e ir al estado 50
+    ')'  desplazar e ir al estado 86
+    ','  desplazar e ir al estado 87
 
 
 Estado 54
 
-    3 instructions: instructions . NEWINSTRUCTION instruction
-   29 control: controlHeader instructions . ELSE ':' instructions END
-   30        | controlHeader instructions . END
-   31        | controlHeader instructions . error
-   32        | controlHeader instructions . ELSE ':' instructions error
-   36        | controlHeader instructions . ELSE error $@2 instructions END
+   17 functionCall: functionHeaderOpen parameter . ')'
+   18             | functionHeaderOpen parameter . error
+   29 parameter: parameter . ',' expression
 
-    error           desplazar e ir al estado 87
-    ELSE            desplazar e ir al estado 88
-    END             desplazar e ir al estado 89
-    NEWINSTRUCTION  desplazar e ir al estado 50
+    error  desplazar e ir al estado 88
+    ')'    desplazar e ir al estado 89
+    ','    desplazar e ir al estado 90
 
 
 Estado 55
 
-    3 instructions: instructions . NEWINSTRUCTION instruction
-   38 loop: loopHeader instructions . END
-   39     | loopHeader instructions . error
+   28 parameter: expression .
+   46 expression: expression . EQUALS expression
+   47           | expression . DIFFERENT expression
+   48           | expression . GREATER expression
+   49           | expression . LESS expression
+   50           | expression . GREATEREQUAL expression
+   51           | expression . LESSEQUAL expression
 
-    error           desplazar e ir al estado 90
-    END             desplazar e ir al estado 91
-    NEWINSTRUCTION  desplazar e ir al estado 50
+    GREATER       desplazar e ir al estado 67
+    LESS          desplazar e ir al estado 68
+    EQUALS        desplazar e ir al estado 69
+    GREATEREQUAL  desplazar e ir al estado 70
+    LESSEQUAL     desplazar e ir al estado 71
+    DIFFERENT     desplazar e ir al estado 72
+
+    $default  reduce usando la regla 28 (parameter)
 
 
 Estado 56
 
-   53 negatedProposition: NOT operation .
-   55 operation: operation . '+' product
-   56          | operation . '-' product
+    3 instructions: instructions . NEWINSTRUCTION instruction
+   24 functionDefinition: functionHeader instructions . END
+   25                   | functionHeader instructions . error
 
-    '+'  desplazar e ir al estado 71
-    '-'  desplazar e ir al estado 72
-
-    $default  reduce usando la regla 53 (negatedProposition)
+    error           desplazar e ir al estado 91
+    END             desplazar e ir al estado 92
+    NEWINSTRUCTION  desplazar e ir al estado 51
 
 
 Estado 57
 
-   19 functionHeaderOpen: IDENTIFIER '(' .
+    3 instructions: instructions . NEWINSTRUCTION instruction
+   32 control: controlHeader instructions . elseHeader instructions END
+   33        | controlHeader instructions . END
+   34        | controlHeader instructions . error
+   35        | controlHeader instructions . elseHeader instructions error
+   39        | controlHeader instructions . ELSE error $@2 instructions END
 
-    $default  reduce usando la regla 19 (functionHeaderOpen)
+    error           desplazar e ir al estado 93
+    ELSE            desplazar e ir al estado 94
+    END             desplazar e ir al estado 95
+    NEWINSTRUCTION  desplazar e ir al estado 51
+
+    elseHeader  ir al estado 96
 
 
 Estado 58
 
-   63 signedOperand: '+' operand .
+   41 loopHeader: loopKeyword expression . ':'
+   45 loop: loopKeyword expression . error $@3 instructions END
+   46 expression: expression . EQUALS expression
+   47           | expression . DIFFERENT expression
+   48           | expression . GREATER expression
+   49           | expression . LESS expression
+   50           | expression . GREATEREQUAL expression
+   51           | expression . LESSEQUAL expression
 
-    $default  reduce usando la regla 63 (signedOperand)
+    error         desplazar e ir al estado 97
+    GREATER       desplazar e ir al estado 67
+    LESS          desplazar e ir al estado 68
+    EQUALS        desplazar e ir al estado 69
+    GREATEREQUAL  desplazar e ir al estado 70
+    LESSEQUAL     desplazar e ir al estado 71
+    DIFFERENT     desplazar e ir al estado 72
+    ':'           desplazar e ir al estado 98
 
 
 Estado 59
 
-   62 signedOperand: '-' operand .
+    3 instructions: instructions . NEWINSTRUCTION instruction
+   42 loop: loopHeader instructions . END
+   43     | loopHeader instructions . error
 
-    $default  reduce usando la regla 62 (signedOperand)
+    error           desplazar e ir al estado 99
+    END             desplazar e ir al estado 100
+    NEWINSTRUCTION  desplazar e ir al estado 51
 
 
 Estado 60
 
-   42 expression: expression . EQUALS expression
-   43           | expression . DIFFERENT expression
-   44           | expression . GREATER expression
-   45           | expression . LESS expression
-   46           | expression . GREATEREQUAL expression
-   47           | expression . LESSEQUAL expression
-   75 operand: '(' expression . ')'
-   76        | '(' expression . error
+   76 operand: READ error .
 
-    error         desplazar e ir al estado 92
-    GREATER       desplazar e ir al estado 63
-    LESS          desplazar e ir al estado 64
-    EQUALS        desplazar e ir al estado 65
-    GREATEREQUAL  desplazar e ir al estado 66
-    LESSEQUAL     desplazar e ir al estado 67
-    DIFFERENT     desplazar e ir al estado 68
-    ')'           desplazar e ir al estado 93
+    $default  reduce usando la regla 76 (operand)
 
 
 Estado 61
 
-   16 functionCall: functionHeaderOpen parameter . ')'
-   17             | functionHeaderOpen parameter . error
-   27 parameter: parameter . ',' expression
+   75 operand: READ TYPE .
 
-    error  desplazar e ir al estado 94
-    ')'    desplazar e ir al estado 95
-    ','    desplazar e ir al estado 96
+    $default  reduce usando la regla 75 (operand)
 
 
 Estado 62
 
-   26 parameter: expression .
-   42 expression: expression . EQUALS expression
-   43           | expression . DIFFERENT expression
-   44           | expression . GREATER expression
-   45           | expression . LESS expression
-   46           | expression . GREATEREQUAL expression
-   47           | expression . LESSEQUAL expression
+   57 negatedProposition: NOT operation .
+   59 operation: operation . '+' product
+   60          | operation . '-' product
 
-    GREATER       desplazar e ir al estado 63
-    LESS          desplazar e ir al estado 64
-    EQUALS        desplazar e ir al estado 65
-    GREATEREQUAL  desplazar e ir al estado 66
-    LESSEQUAL     desplazar e ir al estado 67
-    DIFFERENT     desplazar e ir al estado 68
+    '+'  desplazar e ir al estado 75
+    '-'  desplazar e ir al estado 76
 
-    $default  reduce usando la regla 26 (parameter)
+    $default  reduce usando la regla 57 (negatedProposition)
 
 
 Estado 63
 
-   44 expression: expression GREATER . expression
+   21 functionHeaderOpen: IDENTIFIER '(' .
 
-    error       desplazar e ir al estado 20
-    READ        desplazar e ir al estado 21
-    NOT         desplazar e ir al estado 22
-    VERDADERO   desplazar e ir al estado 23
-    FALSO       desplazar e ir al estado 24
-    IDENTIFIER  desplazar e ir al estado 25
-    FLOAT       desplazar e ir al estado 26
-    CHARACTER   desplazar e ir al estado 27
-    INTEGER     desplazar e ir al estado 28
-    STRING      desplazar e ir al estado 29
-    '+'         desplazar e ir al estado 30
-    '-'         desplazar e ir al estado 31
-    '('         desplazar e ir al estado 32
-
-    functionCall        ir al estado 33
-    functionHeaderOpen  ir al estado 34
-    expression          ir al estado 97
-    proposition         ir al estado 36
-    andProposition      ir al estado 37
-    negatedProposition  ir al estado 38
-    operation           ir al estado 39
-    product             ir al estado 40
-    signedOperand       ir al estado 41
-    operand             ir al estado 42
+    $default  reduce usando la regla 21 (functionHeaderOpen)
 
 
 Estado 64
 
-   45 expression: expression LESS . expression
+   67 signedOperand: '+' operand .
 
-    error       desplazar e ir al estado 20
-    READ        desplazar e ir al estado 21
-    NOT         desplazar e ir al estado 22
-    VERDADERO   desplazar e ir al estado 23
-    FALSO       desplazar e ir al estado 24
-    IDENTIFIER  desplazar e ir al estado 25
-    FLOAT       desplazar e ir al estado 26
-    CHARACTER   desplazar e ir al estado 27
-    INTEGER     desplazar e ir al estado 28
-    STRING      desplazar e ir al estado 29
-    '+'         desplazar e ir al estado 30
-    '-'         desplazar e ir al estado 31
-    '('         desplazar e ir al estado 32
-
-    functionCall        ir al estado 33
-    functionHeaderOpen  ir al estado 34
-    expression          ir al estado 98
-    proposition         ir al estado 36
-    andProposition      ir al estado 37
-    negatedProposition  ir al estado 38
-    operation           ir al estado 39
-    product             ir al estado 40
-    signedOperand       ir al estado 41
-    operand             ir al estado 42
+    $default  reduce usando la regla 67 (signedOperand)
 
 
 Estado 65
 
-   42 expression: expression EQUALS . expression
+   66 signedOperand: '-' operand .
 
-    error       desplazar e ir al estado 20
-    READ        desplazar e ir al estado 21
-    NOT         desplazar e ir al estado 22
-    VERDADERO   desplazar e ir al estado 23
-    FALSO       desplazar e ir al estado 24
-    IDENTIFIER  desplazar e ir al estado 25
-    FLOAT       desplazar e ir al estado 26
-    CHARACTER   desplazar e ir al estado 27
-    INTEGER     desplazar e ir al estado 28
-    STRING      desplazar e ir al estado 29
-    '+'         desplazar e ir al estado 30
-    '-'         desplazar e ir al estado 31
-    '('         desplazar e ir al estado 32
-
-    functionCall        ir al estado 33
-    functionHeaderOpen  ir al estado 34
-    expression          ir al estado 99
-    proposition         ir al estado 36
-    andProposition      ir al estado 37
-    negatedProposition  ir al estado 38
-    operation           ir al estado 39
-    product             ir al estado 40
-    signedOperand       ir al estado 41
-    operand             ir al estado 42
+    $default  reduce usando la regla 66 (signedOperand)
 
 
 Estado 66
 
-   46 expression: expression GREATEREQUAL . expression
+   46 expression: expression . EQUALS expression
+   47           | expression . DIFFERENT expression
+   48           | expression . GREATER expression
+   49           | expression . LESS expression
+   50           | expression . GREATEREQUAL expression
+   51           | expression . LESSEQUAL expression
+   79 operand: '(' expression . ')'
+   80        | '(' expression . error
 
-    error       desplazar e ir al estado 20
-    READ        desplazar e ir al estado 21
-    NOT         desplazar e ir al estado 22
-    VERDADERO   desplazar e ir al estado 23
-    FALSO       desplazar e ir al estado 24
-    IDENTIFIER  desplazar e ir al estado 25
-    FLOAT       desplazar e ir al estado 26
-    CHARACTER   desplazar e ir al estado 27
-    INTEGER     desplazar e ir al estado 28
-    STRING      desplazar e ir al estado 29
-    '+'         desplazar e ir al estado 30
-    '-'         desplazar e ir al estado 31
-    '('         desplazar e ir al estado 32
-
-    functionCall        ir al estado 33
-    functionHeaderOpen  ir al estado 34
-    expression          ir al estado 100
-    proposition         ir al estado 36
-    andProposition      ir al estado 37
-    negatedProposition  ir al estado 38
-    operation           ir al estado 39
-    product             ir al estado 40
-    signedOperand       ir al estado 41
-    operand             ir al estado 42
+    error         desplazar e ir al estado 101
+    GREATER       desplazar e ir al estado 67
+    LESS          desplazar e ir al estado 68
+    EQUALS        desplazar e ir al estado 69
+    GREATEREQUAL  desplazar e ir al estado 70
+    LESSEQUAL     desplazar e ir al estado 71
+    DIFFERENT     desplazar e ir al estado 72
+    ')'           desplazar e ir al estado 102
 
 
 Estado 67
 
-   47 expression: expression LESSEQUAL . expression
+   48 expression: expression GREATER . expression
 
-    error       desplazar e ir al estado 20
-    READ        desplazar e ir al estado 21
-    NOT         desplazar e ir al estado 22
-    VERDADERO   desplazar e ir al estado 23
-    FALSO       desplazar e ir al estado 24
-    IDENTIFIER  desplazar e ir al estado 25
-    FLOAT       desplazar e ir al estado 26
-    CHARACTER   desplazar e ir al estado 27
-    INTEGER     desplazar e ir al estado 28
-    STRING      desplazar e ir al estado 29
-    '+'         desplazar e ir al estado 30
-    '-'         desplazar e ir al estado 31
-    '('         desplazar e ir al estado 32
+    error       desplazar e ir al estado 22
+    READ        desplazar e ir al estado 23
+    NOT         desplazar e ir al estado 24
+    VERDADERO   desplazar e ir al estado 25
+    FALSO       desplazar e ir al estado 26
+    IDENTIFIER  desplazar e ir al estado 27
+    FLOAT       desplazar e ir al estado 28
+    CHARACTER   desplazar e ir al estado 29
+    INTEGER     desplazar e ir al estado 30
+    '+'         desplazar e ir al estado 32
+    '-'         desplazar e ir al estado 33
+    '('         desplazar e ir al estado 34
 
-    functionCall        ir al estado 33
-    functionHeaderOpen  ir al estado 34
-    expression          ir al estado 101
-    proposition         ir al estado 36
-    andProposition      ir al estado 37
-    negatedProposition  ir al estado 38
-    operation           ir al estado 39
-    product             ir al estado 40
-    signedOperand       ir al estado 41
-    operand             ir al estado 42
+    functionCall        ir al estado 35
+    functionHeaderOpen  ir al estado 36
+    expression          ir al estado 103
+    proposition         ir al estado 38
+    andProposition      ir al estado 39
+    negatedProposition  ir al estado 40
+    operation           ir al estado 41
+    product             ir al estado 42
+    signedOperand       ir al estado 43
+    operand             ir al estado 44
 
 
 Estado 68
 
-   43 expression: expression DIFFERENT . expression
+   49 expression: expression LESS . expression
 
-    error       desplazar e ir al estado 20
-    READ        desplazar e ir al estado 21
-    NOT         desplazar e ir al estado 22
-    VERDADERO   desplazar e ir al estado 23
-    FALSO       desplazar e ir al estado 24
-    IDENTIFIER  desplazar e ir al estado 25
-    FLOAT       desplazar e ir al estado 26
-    CHARACTER   desplazar e ir al estado 27
-    INTEGER     desplazar e ir al estado 28
-    STRING      desplazar e ir al estado 29
-    '+'         desplazar e ir al estado 30
-    '-'         desplazar e ir al estado 31
-    '('         desplazar e ir al estado 32
+    error       desplazar e ir al estado 22
+    READ        desplazar e ir al estado 23
+    NOT         desplazar e ir al estado 24
+    VERDADERO   desplazar e ir al estado 25
+    FALSO       desplazar e ir al estado 26
+    IDENTIFIER  desplazar e ir al estado 27
+    FLOAT       desplazar e ir al estado 28
+    CHARACTER   desplazar e ir al estado 29
+    INTEGER     desplazar e ir al estado 30
+    '+'         desplazar e ir al estado 32
+    '-'         desplazar e ir al estado 33
+    '('         desplazar e ir al estado 34
 
-    functionCall        ir al estado 33
-    functionHeaderOpen  ir al estado 34
-    expression          ir al estado 102
-    proposition         ir al estado 36
-    andProposition      ir al estado 37
-    negatedProposition  ir al estado 38
-    operation           ir al estado 39
-    product             ir al estado 40
-    signedOperand       ir al estado 41
-    operand             ir al estado 42
+    functionCall        ir al estado 35
+    functionHeaderOpen  ir al estado 36
+    expression          ir al estado 104
+    proposition         ir al estado 38
+    andProposition      ir al estado 39
+    negatedProposition  ir al estado 40
+    operation           ir al estado 41
+    product             ir al estado 42
+    signedOperand       ir al estado 43
+    operand             ir al estado 44
 
 
 Estado 69
 
-   49 proposition: proposition 'o' . andProposition
+   46 expression: expression EQUALS . expression
 
-    error       desplazar e ir al estado 20
-    READ        desplazar e ir al estado 21
-    NOT         desplazar e ir al estado 22
-    VERDADERO   desplazar e ir al estado 23
-    FALSO       desplazar e ir al estado 24
-    IDENTIFIER  desplazar e ir al estado 25
-    FLOAT       desplazar e ir al estado 26
-    CHARACTER   desplazar e ir al estado 27
-    INTEGER     desplazar e ir al estado 28
-    STRING      desplazar e ir al estado 29
-    '+'         desplazar e ir al estado 30
-    '-'         desplazar e ir al estado 31
-    '('         desplazar e ir al estado 32
+    error       desplazar e ir al estado 22
+    READ        desplazar e ir al estado 23
+    NOT         desplazar e ir al estado 24
+    VERDADERO   desplazar e ir al estado 25
+    FALSO       desplazar e ir al estado 26
+    IDENTIFIER  desplazar e ir al estado 27
+    FLOAT       desplazar e ir al estado 28
+    CHARACTER   desplazar e ir al estado 29
+    INTEGER     desplazar e ir al estado 30
+    '+'         desplazar e ir al estado 32
+    '-'         desplazar e ir al estado 33
+    '('         desplazar e ir al estado 34
 
-    functionCall        ir al estado 33
-    functionHeaderOpen  ir al estado 34
-    andProposition      ir al estado 103
-    negatedProposition  ir al estado 38
-    operation           ir al estado 39
-    product             ir al estado 40
-    signedOperand       ir al estado 41
-    operand             ir al estado 42
+    functionCall        ir al estado 35
+    functionHeaderOpen  ir al estado 36
+    expression          ir al estado 105
+    proposition         ir al estado 38
+    andProposition      ir al estado 39
+    negatedProposition  ir al estado 40
+    operation           ir al estado 41
+    product             ir al estado 42
+    signedOperand       ir al estado 43
+    operand             ir al estado 44
 
 
 Estado 70
 
-   51 andProposition: andProposition 'y' . negatedProposition
+   50 expression: expression GREATEREQUAL . expression
 
-    error       desplazar e ir al estado 20
-    READ        desplazar e ir al estado 21
-    NOT         desplazar e ir al estado 22
-    VERDADERO   desplazar e ir al estado 23
-    FALSO       desplazar e ir al estado 24
-    IDENTIFIER  desplazar e ir al estado 25
-    FLOAT       desplazar e ir al estado 26
-    CHARACTER   desplazar e ir al estado 27
-    INTEGER     desplazar e ir al estado 28
-    STRING      desplazar e ir al estado 29
-    '+'         desplazar e ir al estado 30
-    '-'         desplazar e ir al estado 31
-    '('         desplazar e ir al estado 32
+    error       desplazar e ir al estado 22
+    READ        desplazar e ir al estado 23
+    NOT         desplazar e ir al estado 24
+    VERDADERO   desplazar e ir al estado 25
+    FALSO       desplazar e ir al estado 26
+    IDENTIFIER  desplazar e ir al estado 27
+    FLOAT       desplazar e ir al estado 28
+    CHARACTER   desplazar e ir al estado 29
+    INTEGER     desplazar e ir al estado 30
+    '+'         desplazar e ir al estado 32
+    '-'         desplazar e ir al estado 33
+    '('         desplazar e ir al estado 34
 
-    functionCall        ir al estado 33
-    functionHeaderOpen  ir al estado 34
-    negatedProposition  ir al estado 104
-    operation           ir al estado 39
-    product             ir al estado 40
-    signedOperand       ir al estado 41
-    operand             ir al estado 42
+    functionCall        ir al estado 35
+    functionHeaderOpen  ir al estado 36
+    expression          ir al estado 106
+    proposition         ir al estado 38
+    andProposition      ir al estado 39
+    negatedProposition  ir al estado 40
+    operation           ir al estado 41
+    product             ir al estado 42
+    signedOperand       ir al estado 43
+    operand             ir al estado 44
 
 
 Estado 71
 
-   55 operation: operation '+' . product
+   51 expression: expression LESSEQUAL . expression
 
-    error       desplazar e ir al estado 20
-    READ        desplazar e ir al estado 21
-    VERDADERO   desplazar e ir al estado 23
-    FALSO       desplazar e ir al estado 24
-    IDENTIFIER  desplazar e ir al estado 25
-    FLOAT       desplazar e ir al estado 26
-    CHARACTER   desplazar e ir al estado 27
-    INTEGER     desplazar e ir al estado 28
-    STRING      desplazar e ir al estado 29
-    '+'         desplazar e ir al estado 30
-    '-'         desplazar e ir al estado 31
-    '('         desplazar e ir al estado 32
+    error       desplazar e ir al estado 22
+    READ        desplazar e ir al estado 23
+    NOT         desplazar e ir al estado 24
+    VERDADERO   desplazar e ir al estado 25
+    FALSO       desplazar e ir al estado 26
+    IDENTIFIER  desplazar e ir al estado 27
+    FLOAT       desplazar e ir al estado 28
+    CHARACTER   desplazar e ir al estado 29
+    INTEGER     desplazar e ir al estado 30
+    '+'         desplazar e ir al estado 32
+    '-'         desplazar e ir al estado 33
+    '('         desplazar e ir al estado 34
 
-    functionCall        ir al estado 33
-    functionHeaderOpen  ir al estado 34
-    product             ir al estado 105
-    signedOperand       ir al estado 41
-    operand             ir al estado 42
+    functionCall        ir al estado 35
+    functionHeaderOpen  ir al estado 36
+    expression          ir al estado 107
+    proposition         ir al estado 38
+    andProposition      ir al estado 39
+    negatedProposition  ir al estado 40
+    operation           ir al estado 41
+    product             ir al estado 42
+    signedOperand       ir al estado 43
+    operand             ir al estado 44
 
 
 Estado 72
 
-   56 operation: operation '-' . product
+   47 expression: expression DIFFERENT . expression
 
-    error       desplazar e ir al estado 20
-    READ        desplazar e ir al estado 21
-    VERDADERO   desplazar e ir al estado 23
-    FALSO       desplazar e ir al estado 24
-    IDENTIFIER  desplazar e ir al estado 25
-    FLOAT       desplazar e ir al estado 26
-    CHARACTER   desplazar e ir al estado 27
-    INTEGER     desplazar e ir al estado 28
-    STRING      desplazar e ir al estado 29
-    '+'         desplazar e ir al estado 30
-    '-'         desplazar e ir al estado 31
-    '('         desplazar e ir al estado 32
+    error       desplazar e ir al estado 22
+    READ        desplazar e ir al estado 23
+    NOT         desplazar e ir al estado 24
+    VERDADERO   desplazar e ir al estado 25
+    FALSO       desplazar e ir al estado 26
+    IDENTIFIER  desplazar e ir al estado 27
+    FLOAT       desplazar e ir al estado 28
+    CHARACTER   desplazar e ir al estado 29
+    INTEGER     desplazar e ir al estado 30
+    '+'         desplazar e ir al estado 32
+    '-'         desplazar e ir al estado 33
+    '('         desplazar e ir al estado 34
 
-    functionCall        ir al estado 33
-    functionHeaderOpen  ir al estado 34
-    product             ir al estado 106
-    signedOperand       ir al estado 41
-    operand             ir al estado 42
+    functionCall        ir al estado 35
+    functionHeaderOpen  ir al estado 36
+    expression          ir al estado 108
+    proposition         ir al estado 38
+    andProposition      ir al estado 39
+    negatedProposition  ir al estado 40
+    operation           ir al estado 41
+    product             ir al estado 42
+    signedOperand       ir al estado 43
+    operand             ir al estado 44
 
 
 Estado 73
 
-   60 product: product MODULO . signedOperand
+   53 proposition: proposition 'o' . andProposition
 
-    error       desplazar e ir al estado 20
-    READ        desplazar e ir al estado 21
-    VERDADERO   desplazar e ir al estado 23
-    FALSO       desplazar e ir al estado 24
-    IDENTIFIER  desplazar e ir al estado 25
-    FLOAT       desplazar e ir al estado 26
-    CHARACTER   desplazar e ir al estado 27
-    INTEGER     desplazar e ir al estado 28
-    STRING      desplazar e ir al estado 29
-    '+'         desplazar e ir al estado 30
-    '-'         desplazar e ir al estado 31
-    '('         desplazar e ir al estado 32
+    error       desplazar e ir al estado 22
+    READ        desplazar e ir al estado 23
+    NOT         desplazar e ir al estado 24
+    VERDADERO   desplazar e ir al estado 25
+    FALSO       desplazar e ir al estado 26
+    IDENTIFIER  desplazar e ir al estado 27
+    FLOAT       desplazar e ir al estado 28
+    CHARACTER   desplazar e ir al estado 29
+    INTEGER     desplazar e ir al estado 30
+    '+'         desplazar e ir al estado 32
+    '-'         desplazar e ir al estado 33
+    '('         desplazar e ir al estado 34
 
-    functionCall        ir al estado 33
-    functionHeaderOpen  ir al estado 34
-    signedOperand       ir al estado 107
-    operand             ir al estado 42
+    functionCall        ir al estado 35
+    functionHeaderOpen  ir al estado 36
+    andProposition      ir al estado 109
+    negatedProposition  ir al estado 40
+    operation           ir al estado 41
+    product             ir al estado 42
+    signedOperand       ir al estado 43
+    operand             ir al estado 44
 
 
 Estado 74
 
-   58 product: product '*' . signedOperand
+   55 andProposition: andProposition 'y' . negatedProposition
 
-    error       desplazar e ir al estado 20
-    READ        desplazar e ir al estado 21
-    VERDADERO   desplazar e ir al estado 23
-    FALSO       desplazar e ir al estado 24
-    IDENTIFIER  desplazar e ir al estado 25
-    FLOAT       desplazar e ir al estado 26
-    CHARACTER   desplazar e ir al estado 27
-    INTEGER     desplazar e ir al estado 28
-    STRING      desplazar e ir al estado 29
-    '+'         desplazar e ir al estado 30
-    '-'         desplazar e ir al estado 31
-    '('         desplazar e ir al estado 32
+    error       desplazar e ir al estado 22
+    READ        desplazar e ir al estado 23
+    NOT         desplazar e ir al estado 24
+    VERDADERO   desplazar e ir al estado 25
+    FALSO       desplazar e ir al estado 26
+    IDENTIFIER  desplazar e ir al estado 27
+    FLOAT       desplazar e ir al estado 28
+    CHARACTER   desplazar e ir al estado 29
+    INTEGER     desplazar e ir al estado 30
+    '+'         desplazar e ir al estado 32
+    '-'         desplazar e ir al estado 33
+    '('         desplazar e ir al estado 34
 
-    functionCall        ir al estado 33
-    functionHeaderOpen  ir al estado 34
-    signedOperand       ir al estado 108
-    operand             ir al estado 42
+    functionCall        ir al estado 35
+    functionHeaderOpen  ir al estado 36
+    negatedProposition  ir al estado 110
+    operation           ir al estado 41
+    product             ir al estado 42
+    signedOperand       ir al estado 43
+    operand             ir al estado 44
 
 
 Estado 75
 
-   59 product: product '/' . signedOperand
+   59 operation: operation '+' . product
 
-    error       desplazar e ir al estado 20
-    READ        desplazar e ir al estado 21
-    VERDADERO   desplazar e ir al estado 23
-    FALSO       desplazar e ir al estado 24
-    IDENTIFIER  desplazar e ir al estado 25
-    FLOAT       desplazar e ir al estado 26
-    CHARACTER   desplazar e ir al estado 27
-    INTEGER     desplazar e ir al estado 28
-    STRING      desplazar e ir al estado 29
-    '+'         desplazar e ir al estado 30
-    '-'         desplazar e ir al estado 31
-    '('         desplazar e ir al estado 32
+    error       desplazar e ir al estado 22
+    READ        desplazar e ir al estado 23
+    VERDADERO   desplazar e ir al estado 25
+    FALSO       desplazar e ir al estado 26
+    IDENTIFIER  desplazar e ir al estado 27
+    FLOAT       desplazar e ir al estado 28
+    CHARACTER   desplazar e ir al estado 29
+    INTEGER     desplazar e ir al estado 30
+    '+'         desplazar e ir al estado 32
+    '-'         desplazar e ir al estado 33
+    '('         desplazar e ir al estado 34
 
-    functionCall        ir al estado 33
-    functionHeaderOpen  ir al estado 34
-    signedOperand       ir al estado 109
-    operand             ir al estado 42
+    functionCall        ir al estado 35
+    functionHeaderOpen  ir al estado 36
+    product             ir al estado 111
+    signedOperand       ir al estado 43
+    operand             ir al estado 44
 
 
 Estado 76
 
-   41 loop: WHILE expression error . $@3 instructions END
+   60 operation: operation '-' . product
 
-    $default  reduce usando la regla 40 ($@3)
+    error       desplazar e ir al estado 22
+    READ        desplazar e ir al estado 23
+    VERDADERO   desplazar e ir al estado 25
+    FALSO       desplazar e ir al estado 26
+    IDENTIFIER  desplazar e ir al estado 27
+    FLOAT       desplazar e ir al estado 28
+    CHARACTER   desplazar e ir al estado 29
+    INTEGER     desplazar e ir al estado 30
+    '+'         desplazar e ir al estado 32
+    '-'         desplazar e ir al estado 33
+    '('         desplazar e ir al estado 34
 
-    $@3  ir al estado 110
+    functionCall        ir al estado 35
+    functionHeaderOpen  ir al estado 36
+    product             ir al estado 112
+    signedOperand       ir al estado 43
+    operand             ir al estado 44
 
 
 Estado 77
 
-   37 loopHeader: WHILE expression ':' .
+   64 product: product MODULO . signedOperand
 
-    $default  reduce usando la regla 37 (loopHeader)
+    error       desplazar e ir al estado 22
+    READ        desplazar e ir al estado 23
+    VERDADERO   desplazar e ir al estado 25
+    FALSO       desplazar e ir al estado 26
+    IDENTIFIER  desplazar e ir al estado 27
+    FLOAT       desplazar e ir al estado 28
+    CHARACTER   desplazar e ir al estado 29
+    INTEGER     desplazar e ir al estado 30
+    '+'         desplazar e ir al estado 32
+    '-'         desplazar e ir al estado 33
+    '('         desplazar e ir al estado 34
+
+    functionCall        ir al estado 35
+    functionHeaderOpen  ir al estado 36
+    signedOperand       ir al estado 113
+    operand             ir al estado 44
 
 
 Estado 78
 
-   34 control: IF expression error . $@1 instructions END
+   62 product: product '*' . signedOperand
 
-    $default  reduce usando la regla 33 ($@1)
+    error       desplazar e ir al estado 22
+    READ        desplazar e ir al estado 23
+    VERDADERO   desplazar e ir al estado 25
+    FALSO       desplazar e ir al estado 26
+    IDENTIFIER  desplazar e ir al estado 27
+    FLOAT       desplazar e ir al estado 28
+    CHARACTER   desplazar e ir al estado 29
+    INTEGER     desplazar e ir al estado 30
+    '+'         desplazar e ir al estado 32
+    '-'         desplazar e ir al estado 33
+    '('         desplazar e ir al estado 34
 
-    $@1  ir al estado 111
+    functionCall        ir al estado 35
+    functionHeaderOpen  ir al estado 36
+    signedOperand       ir al estado 114
+    operand             ir al estado 44
 
 
 Estado 79
 
-   28 controlHeader: IF expression ':' .
+   63 product: product '/' . signedOperand
 
-    $default  reduce usando la regla 28 (controlHeader)
+    error       desplazar e ir al estado 22
+    READ        desplazar e ir al estado 23
+    VERDADERO   desplazar e ir al estado 25
+    FALSO       desplazar e ir al estado 26
+    IDENTIFIER  desplazar e ir al estado 27
+    FLOAT       desplazar e ir al estado 28
+    CHARACTER   desplazar e ir al estado 29
+    INTEGER     desplazar e ir al estado 30
+    '+'         desplazar e ir al estado 32
+    '-'         desplazar e ir al estado 33
+    '('         desplazar e ir al estado 34
+
+    functionCall        ir al estado 35
+    functionHeaderOpen  ir al estado 36
+    signedOperand       ir al estado 115
+    operand             ir al estado 44
 
 
 Estado 80
 
-   13 assignment: IDENTIFIER '=' expression .
-   42 expression: expression . EQUALS expression
-   43           | expression . DIFFERENT expression
-   44           | expression . GREATER expression
-   45           | expression . LESS expression
-   46           | expression . GREATEREQUAL expression
-   47           | expression . LESSEQUAL expression
+   37 control: IF expression error . $@1 instructions END
 
-    GREATER       desplazar e ir al estado 63
-    LESS          desplazar e ir al estado 64
-    EQUALS        desplazar e ir al estado 65
-    GREATEREQUAL  desplazar e ir al estado 66
-    LESSEQUAL     desplazar e ir al estado 67
-    DIFFERENT     desplazar e ir al estado 68
+    $default  reduce usando la regla 36 ($@1)
 
-    $default  reduce usando la regla 13 (assignment)
+    $@1  ir al estado 116
 
 
 Estado 81
 
-   15 bareFunctionCall: IDENTIFIER '(' ')' .
+   30 controlHeader: IF expression ':' .
 
-    $default  reduce usando la regla 15 (bareFunctionCall)
+    $default  reduce usando la regla 30 (controlHeader)
 
 
 Estado 82
+
+   14 assignment: IDENTIFIER '=' expression .
+   46 expression: expression . EQUALS expression
+   47           | expression . DIFFERENT expression
+   48           | expression . GREATER expression
+   49           | expression . LESS expression
+   50           | expression . GREATEREQUAL expression
+   51           | expression . LESSEQUAL expression
+
+    GREATER       desplazar e ir al estado 67
+    LESS          desplazar e ir al estado 68
+    EQUALS        desplazar e ir al estado 69
+    GREATEREQUAL  desplazar e ir al estado 70
+    LESSEQUAL     desplazar e ir al estado 71
+    DIFFERENT     desplazar e ir al estado 72
+
+    $default  reduce usando la regla 14 (assignment)
+
+
+Estado 83
+
+   16 bareFunctionCall: IDENTIFIER '(' ')' .
+
+    $default  reduce usando la regla 16 (bareFunctionCall)
+
+
+Estado 84
 
     3 instructions: instructions NEWINSTRUCTION instruction .
 
     $default  reduce usando la regla 3 (instructions)
 
 
-Estado 83
-
-   21 functionHeader: functionHeaderOpen definingParameter ')' . ':'
-
-    ':'  desplazar e ir al estado 112
-
-
-Estado 84
-
-   24 definingParameter: definingParameter ',' . IDENTIFIER
-
-    IDENTIFIER  desplazar e ir al estado 113
-
-
 Estado 85
 
-   23 functionDefinition: functionHeader instructions error .
+   27 definingParameter: TYPE IDENTIFIER .
 
-    $default  reduce usando la regla 23 (functionDefinition)
+    $default  reduce usando la regla 27 (definingParameter)
 
 
 Estado 86
 
-   22 functionDefinition: functionHeader instructions END .
+   23 functionHeader: functionHeaderOpen definingParameter ')' . ':'
 
-    $default  reduce usando la regla 22 (functionDefinition)
+    ':'  desplazar e ir al estado 117
 
 
 Estado 87
 
-   31 control: controlHeader instructions error .
+   26 definingParameter: definingParameter ',' . TYPE IDENTIFIER
 
-    $default  reduce usando la regla 31 (control)
+    TYPE  desplazar e ir al estado 118
 
 
 Estado 88
 
-   29 control: controlHeader instructions ELSE . ':' instructions END
-   32        | controlHeader instructions ELSE . ':' instructions error
-   36        | controlHeader instructions ELSE . error $@2 instructions END
+   18 functionCall: functionHeaderOpen parameter error .
 
-    error  desplazar e ir al estado 114
-    ':'    desplazar e ir al estado 115
+    $default  reduce usando la regla 18 (functionCall)
 
 
 Estado 89
 
-   30 control: controlHeader instructions END .
-
-    $default  reduce usando la regla 30 (control)
-
-
-Estado 90
-
-   39 loop: loopHeader instructions error .
-
-    $default  reduce usando la regla 39 (loop)
-
-
-Estado 91
-
-   38 loop: loopHeader instructions END .
-
-    $default  reduce usando la regla 38 (loop)
-
-
-Estado 92
-
-   76 operand: '(' expression error .
-
-    $default  reduce usando la regla 76 (operand)
-
-
-Estado 93
-
-   75 operand: '(' expression ')' .
-
-    $default  reduce usando la regla 75 (operand)
-
-
-Estado 94
-
-   17 functionCall: functionHeaderOpen parameter error .
+   17 functionCall: functionHeaderOpen parameter ')' .
 
     $default  reduce usando la regla 17 (functionCall)
 
 
-Estado 95
+Estado 90
 
-   16 functionCall: functionHeaderOpen parameter ')' .
+   29 parameter: parameter ',' . expression
 
-    $default  reduce usando la regla 16 (functionCall)
+    error       desplazar e ir al estado 22
+    READ        desplazar e ir al estado 23
+    NOT         desplazar e ir al estado 24
+    VERDADERO   desplazar e ir al estado 25
+    FALSO       desplazar e ir al estado 26
+    IDENTIFIER  desplazar e ir al estado 27
+    FLOAT       desplazar e ir al estado 28
+    CHARACTER   desplazar e ir al estado 29
+    INTEGER     desplazar e ir al estado 30
+    '+'         desplazar e ir al estado 32
+    '-'         desplazar e ir al estado 33
+    '('         desplazar e ir al estado 34
 
+    functionCall        ir al estado 35
+    functionHeaderOpen  ir al estado 36
+    expression          ir al estado 119
+    proposition         ir al estado 38
+    andProposition      ir al estado 39
+    negatedProposition  ir al estado 40
+    operation           ir al estado 41
+    product             ir al estado 42
+    signedOperand       ir al estado 43
+    operand             ir al estado 44
 
-Estado 96
 
-   27 parameter: parameter ',' . expression
+Estado 91
 
-    error       desplazar e ir al estado 20
-    READ        desplazar e ir al estado 21
-    NOT         desplazar e ir al estado 22
-    VERDADERO   desplazar e ir al estado 23
-    FALSO       desplazar e ir al estado 24
-    IDENTIFIER  desplazar e ir al estado 25
-    FLOAT       desplazar e ir al estado 26
-    CHARACTER   desplazar e ir al estado 27
-    INTEGER     desplazar e ir al estado 28
-    STRING      desplazar e ir al estado 29
-    '+'         desplazar e ir al estado 30
-    '-'         desplazar e ir al estado 31
-    '('         desplazar e ir al estado 32
+   25 functionDefinition: functionHeader instructions error .
 
-    functionCall        ir al estado 33
-    functionHeaderOpen  ir al estado 34
-    expression          ir al estado 116
-    proposition         ir al estado 36
-    andProposition      ir al estado 37
-    negatedProposition  ir al estado 38
-    operation           ir al estado 39
-    product             ir al estado 40
-    signedOperand       ir al estado 41
-    operand             ir al estado 42
+    $default  reduce usando la regla 25 (functionDefinition)
 
 
-Estado 97
+Estado 92
 
-   42 expression: expression . EQUALS expression
-   43           | expression . DIFFERENT expression
-   44           | expression . GREATER expression
-   44           | expression GREATER expression .
-   45           | expression . LESS expression
-   46           | expression . GREATEREQUAL expression
-   47           | expression . LESSEQUAL expression
+   24 functionDefinition: functionHeader instructions END .
 
-    LESS          desplazar e ir al estado 64
-    GREATEREQUAL  desplazar e ir al estado 66
-    LESSEQUAL     desplazar e ir al estado 67
+    $default  reduce usando la regla 24 (functionDefinition)
 
-    $default  reduce usando la regla 44 (expression)
 
+Estado 93
 
-Estado 98
-
-   42 expression: expression . EQUALS expression
-   43           | expression . DIFFERENT expression
-   44           | expression . GREATER expression
-   45           | expression . LESS expression
-   45           | expression LESS expression .
-   46           | expression . GREATEREQUAL expression
-   47           | expression . LESSEQUAL expression
-
-    GREATEREQUAL  desplazar e ir al estado 66
-    LESSEQUAL     desplazar e ir al estado 67
-
-    $default  reduce usando la regla 45 (expression)
-
-
-Estado 99
-
-   42 expression: expression . EQUALS expression
-   42           | expression EQUALS expression .
-   43           | expression . DIFFERENT expression
-   44           | expression . GREATER expression
-   45           | expression . LESS expression
-   46           | expression . GREATEREQUAL expression
-   47           | expression . LESSEQUAL expression
-
-    GREATER       desplazar e ir al estado 63
-    LESS          desplazar e ir al estado 64
-    GREATEREQUAL  desplazar e ir al estado 66
-    LESSEQUAL     desplazar e ir al estado 67
-    DIFFERENT     desplazar e ir al estado 68
-
-    $default  reduce usando la regla 42 (expression)
-
-
-Estado 100
-
-   42 expression: expression . EQUALS expression
-   43           | expression . DIFFERENT expression
-   44           | expression . GREATER expression
-   45           | expression . LESS expression
-   46           | expression . GREATEREQUAL expression
-   46           | expression GREATEREQUAL expression .
-   47           | expression . LESSEQUAL expression
-
-    LESSEQUAL  desplazar e ir al estado 67
-
-    $default  reduce usando la regla 46 (expression)
-
-
-Estado 101
-
-   42 expression: expression . EQUALS expression
-   43           | expression . DIFFERENT expression
-   44           | expression . GREATER expression
-   45           | expression . LESS expression
-   46           | expression . GREATEREQUAL expression
-   47           | expression . LESSEQUAL expression
-   47           | expression LESSEQUAL expression .
-
-    $default  reduce usando la regla 47 (expression)
-
-
-Estado 102
-
-   42 expression: expression . EQUALS expression
-   43           | expression . DIFFERENT expression
-   43           | expression DIFFERENT expression .
-   44           | expression . GREATER expression
-   45           | expression . LESS expression
-   46           | expression . GREATEREQUAL expression
-   47           | expression . LESSEQUAL expression
-
-    GREATER       desplazar e ir al estado 63
-    LESS          desplazar e ir al estado 64
-    GREATEREQUAL  desplazar e ir al estado 66
-    LESSEQUAL     desplazar e ir al estado 67
-
-    $default  reduce usando la regla 43 (expression)
-
-
-Estado 103
-
-   49 proposition: proposition 'o' andProposition .
-   51 andProposition: andProposition . 'y' negatedProposition
-
-    'y'  desplazar e ir al estado 70
-
-    $default  reduce usando la regla 49 (proposition)
-
-
-Estado 104
-
-   51 andProposition: andProposition 'y' negatedProposition .
-
-    $default  reduce usando la regla 51 (andProposition)
-
-
-Estado 105
-
-   55 operation: operation '+' product .
-   58 product: product . '*' signedOperand
-   59        | product . '/' signedOperand
-   60        | product . MODULO signedOperand
-
-    MODULO  desplazar e ir al estado 73
-    '*'     desplazar e ir al estado 74
-    '/'     desplazar e ir al estado 75
-
-    $default  reduce usando la regla 55 (operation)
-
-
-Estado 106
-
-   56 operation: operation '-' product .
-   58 product: product . '*' signedOperand
-   59        | product . '/' signedOperand
-   60        | product . MODULO signedOperand
-
-    MODULO  desplazar e ir al estado 73
-    '*'     desplazar e ir al estado 74
-    '/'     desplazar e ir al estado 75
-
-    $default  reduce usando la regla 56 (operation)
-
-
-Estado 107
-
-   60 product: product MODULO signedOperand .
-
-    $default  reduce usando la regla 60 (product)
-
-
-Estado 108
-
-   58 product: product '*' signedOperand .
-
-    $default  reduce usando la regla 58 (product)
-
-
-Estado 109
-
-   59 product: product '/' signedOperand .
-
-    $default  reduce usando la regla 59 (product)
-
-
-Estado 110
-
-   41 loop: WHILE expression error $@3 . instructions END
-
-    WRITE       desplazar e ir al estado 1
-    RETURN      desplazar e ir al estado 2
-    WHILE       desplazar e ir al estado 3
-    IF          desplazar e ir al estado 4
-    IDENTIFIER  desplazar e ir al estado 5
-
-    $default  reduce usando la regla 10 (instruction)
-
-    instructions        ir al estado 117
-    instruction         ir al estado 8
-    return              ir al estado 9
-    assignment          ir al estado 10
-    bareFunctionCall    ir al estado 11
-    writeCall           ir al estado 12
-    functionHeaderOpen  ir al estado 13
-    functionHeader      ir al estado 14
-    functionDefinition  ir al estado 15
-    controlHeader       ir al estado 16
-    control             ir al estado 17
-    loopHeader          ir al estado 18
-    loop                ir al estado 19
-
-
-Estado 111
-
-   34 control: IF expression error $@1 . instructions END
-
-    WRITE       desplazar e ir al estado 1
-    RETURN      desplazar e ir al estado 2
-    WHILE       desplazar e ir al estado 3
-    IF          desplazar e ir al estado 4
-    IDENTIFIER  desplazar e ir al estado 5
-
-    $default  reduce usando la regla 10 (instruction)
-
-    instructions        ir al estado 118
-    instruction         ir al estado 8
-    return              ir al estado 9
-    assignment          ir al estado 10
-    bareFunctionCall    ir al estado 11
-    writeCall           ir al estado 12
-    functionHeaderOpen  ir al estado 13
-    functionHeader      ir al estado 14
-    functionDefinition  ir al estado 15
-    controlHeader       ir al estado 16
-    control             ir al estado 17
-    loopHeader          ir al estado 18
-    loop                ir al estado 19
-
-
-Estado 112
-
-   21 functionHeader: functionHeaderOpen definingParameter ')' ':' .
-
-    $default  reduce usando la regla 21 (functionHeader)
-
-
-Estado 113
-
-   24 definingParameter: definingParameter ',' IDENTIFIER .
-
-    $default  reduce usando la regla 24 (definingParameter)
-
-
-Estado 114
-
-   36 control: controlHeader instructions ELSE error . $@2 instructions END
-
-    $default  reduce usando la regla 35 ($@2)
-
-    $@2  ir al estado 119
-
-
-Estado 115
-
-   29 control: controlHeader instructions ELSE ':' . instructions END
-   32        | controlHeader instructions ELSE ':' . instructions error
-
-    WRITE       desplazar e ir al estado 1
-    RETURN      desplazar e ir al estado 2
-    WHILE       desplazar e ir al estado 3
-    IF          desplazar e ir al estado 4
-    IDENTIFIER  desplazar e ir al estado 5
-
-    $default  reduce usando la regla 10 (instruction)
-
-    instructions        ir al estado 120
-    instruction         ir al estado 8
-    return              ir al estado 9
-    assignment          ir al estado 10
-    bareFunctionCall    ir al estado 11
-    writeCall           ir al estado 12
-    functionHeaderOpen  ir al estado 13
-    functionHeader      ir al estado 14
-    functionDefinition  ir al estado 15
-    controlHeader       ir al estado 16
-    control             ir al estado 17
-    loopHeader          ir al estado 18
-    loop                ir al estado 19
-
-
-Estado 116
-
-   27 parameter: parameter ',' expression .
-   42 expression: expression . EQUALS expression
-   43           | expression . DIFFERENT expression
-   44           | expression . GREATER expression
-   45           | expression . LESS expression
-   46           | expression . GREATEREQUAL expression
-   47           | expression . LESSEQUAL expression
-
-    GREATER       desplazar e ir al estado 63
-    LESS          desplazar e ir al estado 64
-    EQUALS        desplazar e ir al estado 65
-    GREATEREQUAL  desplazar e ir al estado 66
-    LESSEQUAL     desplazar e ir al estado 67
-    DIFFERENT     desplazar e ir al estado 68
-
-    $default  reduce usando la regla 27 (parameter)
-
-
-Estado 117
-
-    3 instructions: instructions . NEWINSTRUCTION instruction
-   41 loop: WHILE expression error $@3 instructions . END
-
-    END             desplazar e ir al estado 121
-    NEWINSTRUCTION  desplazar e ir al estado 50
-
-
-Estado 118
-
-    3 instructions: instructions . NEWINSTRUCTION instruction
-   34 control: IF expression error $@1 instructions . END
-
-    END             desplazar e ir al estado 122
-    NEWINSTRUCTION  desplazar e ir al estado 50
-
-
-Estado 119
-
-   36 control: controlHeader instructions ELSE error $@2 . instructions END
-
-    WRITE       desplazar e ir al estado 1
-    RETURN      desplazar e ir al estado 2
-    WHILE       desplazar e ir al estado 3
-    IF          desplazar e ir al estado 4
-    IDENTIFIER  desplazar e ir al estado 5
-
-    $default  reduce usando la regla 10 (instruction)
-
-    instructions        ir al estado 123
-    instruction         ir al estado 8
-    return              ir al estado 9
-    assignment          ir al estado 10
-    bareFunctionCall    ir al estado 11
-    writeCall           ir al estado 12
-    functionHeaderOpen  ir al estado 13
-    functionHeader      ir al estado 14
-    functionDefinition  ir al estado 15
-    controlHeader       ir al estado 16
-    control             ir al estado 17
-    loopHeader          ir al estado 18
-    loop                ir al estado 19
-
-
-Estado 120
-
-    3 instructions: instructions . NEWINSTRUCTION instruction
-   29 control: controlHeader instructions ELSE ':' instructions . END
-   32        | controlHeader instructions ELSE ':' instructions . error
-
-    error           desplazar e ir al estado 124
-    END             desplazar e ir al estado 125
-    NEWINSTRUCTION  desplazar e ir al estado 50
-
-
-Estado 121
-
-   41 loop: WHILE expression error $@3 instructions END .
-
-    $default  reduce usando la regla 41 (loop)
-
-
-Estado 122
-
-   34 control: IF expression error $@1 instructions END .
+   34 control: controlHeader instructions error .
 
     $default  reduce usando la regla 34 (control)
 
 
-Estado 123
+Estado 94
+
+   31 elseHeader: ELSE . ':'
+   39 control: controlHeader instructions ELSE . error $@2 instructions END
+
+    error  desplazar e ir al estado 120
+    ':'    desplazar e ir al estado 121
+
+
+Estado 95
+
+   33 control: controlHeader instructions END .
+
+    $default  reduce usando la regla 33 (control)
+
+
+Estado 96
+
+   32 control: controlHeader instructions elseHeader . instructions END
+   35        | controlHeader instructions elseHeader . instructions error
+
+    WRITE       desplazar e ir al estado 1
+    RETURN      desplazar e ir al estado 2
+    WHILE       desplazar e ir al estado 3
+    IF          desplazar e ir al estado 4
+    IDENTIFIER  desplazar e ir al estado 5
+
+    $default  reduce usando la regla 11 (instruction)
+
+    instructions        ir al estado 122
+    instruction         ir al estado 8
+    return              ir al estado 9
+    assignment          ir al estado 10
+    bareFunctionCall    ir al estado 11
+    functionCall        ir al estado 12
+    writeCall           ir al estado 13
+    functionHeaderOpen  ir al estado 14
+    functionHeader      ir al estado 15
+    functionDefinition  ir al estado 16
+    controlHeader       ir al estado 17
+    control             ir al estado 18
+    loopKeyword         ir al estado 19
+    loopHeader          ir al estado 20
+    loop                ir al estado 21
+
+
+Estado 97
+
+   45 loop: loopKeyword expression error . $@3 instructions END
+
+    $default  reduce usando la regla 44 ($@3)
+
+    $@3  ir al estado 123
+
+
+Estado 98
+
+   41 loopHeader: loopKeyword expression ':' .
+
+    $default  reduce usando la regla 41 (loopHeader)
+
+
+Estado 99
+
+   43 loop: loopHeader instructions error .
+
+    $default  reduce usando la regla 43 (loop)
+
+
+Estado 100
+
+   42 loop: loopHeader instructions END .
+
+    $default  reduce usando la regla 42 (loop)
+
+
+Estado 101
+
+   80 operand: '(' expression error .
+
+    $default  reduce usando la regla 80 (operand)
+
+
+Estado 102
+
+   79 operand: '(' expression ')' .
+
+    $default  reduce usando la regla 79 (operand)
+
+
+Estado 103
+
+   46 expression: expression . EQUALS expression
+   47           | expression . DIFFERENT expression
+   48           | expression . GREATER expression
+   48           | expression GREATER expression .
+   49           | expression . LESS expression
+   50           | expression . GREATEREQUAL expression
+   51           | expression . LESSEQUAL expression
+
+    LESS          desplazar e ir al estado 68
+    GREATEREQUAL  desplazar e ir al estado 70
+    LESSEQUAL     desplazar e ir al estado 71
+
+    $default  reduce usando la regla 48 (expression)
+
+
+Estado 104
+
+   46 expression: expression . EQUALS expression
+   47           | expression . DIFFERENT expression
+   48           | expression . GREATER expression
+   49           | expression . LESS expression
+   49           | expression LESS expression .
+   50           | expression . GREATEREQUAL expression
+   51           | expression . LESSEQUAL expression
+
+    GREATEREQUAL  desplazar e ir al estado 70
+    LESSEQUAL     desplazar e ir al estado 71
+
+    $default  reduce usando la regla 49 (expression)
+
+
+Estado 105
+
+   46 expression: expression . EQUALS expression
+   46           | expression EQUALS expression .
+   47           | expression . DIFFERENT expression
+   48           | expression . GREATER expression
+   49           | expression . LESS expression
+   50           | expression . GREATEREQUAL expression
+   51           | expression . LESSEQUAL expression
+
+    GREATER       desplazar e ir al estado 67
+    LESS          desplazar e ir al estado 68
+    GREATEREQUAL  desplazar e ir al estado 70
+    LESSEQUAL     desplazar e ir al estado 71
+    DIFFERENT     desplazar e ir al estado 72
+
+    $default  reduce usando la regla 46 (expression)
+
+
+Estado 106
+
+   46 expression: expression . EQUALS expression
+   47           | expression . DIFFERENT expression
+   48           | expression . GREATER expression
+   49           | expression . LESS expression
+   50           | expression . GREATEREQUAL expression
+   50           | expression GREATEREQUAL expression .
+   51           | expression . LESSEQUAL expression
+
+    LESSEQUAL  desplazar e ir al estado 71
+
+    $default  reduce usando la regla 50 (expression)
+
+
+Estado 107
+
+   46 expression: expression . EQUALS expression
+   47           | expression . DIFFERENT expression
+   48           | expression . GREATER expression
+   49           | expression . LESS expression
+   50           | expression . GREATEREQUAL expression
+   51           | expression . LESSEQUAL expression
+   51           | expression LESSEQUAL expression .
+
+    $default  reduce usando la regla 51 (expression)
+
+
+Estado 108
+
+   46 expression: expression . EQUALS expression
+   47           | expression . DIFFERENT expression
+   47           | expression DIFFERENT expression .
+   48           | expression . GREATER expression
+   49           | expression . LESS expression
+   50           | expression . GREATEREQUAL expression
+   51           | expression . LESSEQUAL expression
+
+    GREATER       desplazar e ir al estado 67
+    LESS          desplazar e ir al estado 68
+    GREATEREQUAL  desplazar e ir al estado 70
+    LESSEQUAL     desplazar e ir al estado 71
+
+    $default  reduce usando la regla 47 (expression)
+
+
+Estado 109
+
+   53 proposition: proposition 'o' andProposition .
+   55 andProposition: andProposition . 'y' negatedProposition
+
+    'y'  desplazar e ir al estado 74
+
+    $default  reduce usando la regla 53 (proposition)
+
+
+Estado 110
+
+   55 andProposition: andProposition 'y' negatedProposition .
+
+    $default  reduce usando la regla 55 (andProposition)
+
+
+Estado 111
+
+   59 operation: operation '+' product .
+   62 product: product . '*' signedOperand
+   63        | product . '/' signedOperand
+   64        | product . MODULO signedOperand
+
+    MODULO  desplazar e ir al estado 77
+    '*'     desplazar e ir al estado 78
+    '/'     desplazar e ir al estado 79
+
+    $default  reduce usando la regla 59 (operation)
+
+
+Estado 112
+
+   60 operation: operation '-' product .
+   62 product: product . '*' signedOperand
+   63        | product . '/' signedOperand
+   64        | product . MODULO signedOperand
+
+    MODULO  desplazar e ir al estado 77
+    '*'     desplazar e ir al estado 78
+    '/'     desplazar e ir al estado 79
+
+    $default  reduce usando la regla 60 (operation)
+
+
+Estado 113
+
+   64 product: product MODULO signedOperand .
+
+    $default  reduce usando la regla 64 (product)
+
+
+Estado 114
+
+   62 product: product '*' signedOperand .
+
+    $default  reduce usando la regla 62 (product)
+
+
+Estado 115
+
+   63 product: product '/' signedOperand .
+
+    $default  reduce usando la regla 63 (product)
+
+
+Estado 116
+
+   37 control: IF expression error $@1 . instructions END
+
+    WRITE       desplazar e ir al estado 1
+    RETURN      desplazar e ir al estado 2
+    WHILE       desplazar e ir al estado 3
+    IF          desplazar e ir al estado 4
+    IDENTIFIER  desplazar e ir al estado 5
+
+    $default  reduce usando la regla 11 (instruction)
+
+    instructions        ir al estado 124
+    instruction         ir al estado 8
+    return              ir al estado 9
+    assignment          ir al estado 10
+    bareFunctionCall    ir al estado 11
+    functionCall        ir al estado 12
+    writeCall           ir al estado 13
+    functionHeaderOpen  ir al estado 14
+    functionHeader      ir al estado 15
+    functionDefinition  ir al estado 16
+    controlHeader       ir al estado 17
+    control             ir al estado 18
+    loopKeyword         ir al estado 19
+    loopHeader          ir al estado 20
+    loop                ir al estado 21
+
+
+Estado 117
+
+   23 functionHeader: functionHeaderOpen definingParameter ')' ':' .
+
+    $default  reduce usando la regla 23 (functionHeader)
+
+
+Estado 118
+
+   26 definingParameter: definingParameter ',' TYPE . IDENTIFIER
+
+    IDENTIFIER  desplazar e ir al estado 125
+
+
+Estado 119
+
+   29 parameter: parameter ',' expression .
+   46 expression: expression . EQUALS expression
+   47           | expression . DIFFERENT expression
+   48           | expression . GREATER expression
+   49           | expression . LESS expression
+   50           | expression . GREATEREQUAL expression
+   51           | expression . LESSEQUAL expression
+
+    GREATER       desplazar e ir al estado 67
+    LESS          desplazar e ir al estado 68
+    EQUALS        desplazar e ir al estado 69
+    GREATEREQUAL  desplazar e ir al estado 70
+    LESSEQUAL     desplazar e ir al estado 71
+    DIFFERENT     desplazar e ir al estado 72
+
+    $default  reduce usando la regla 29 (parameter)
+
+
+Estado 120
+
+   39 control: controlHeader instructions ELSE error . $@2 instructions END
+
+    $default  reduce usando la regla 38 ($@2)
+
+    $@2  ir al estado 126
+
+
+Estado 121
+
+   31 elseHeader: ELSE ':' .
+
+    $default  reduce usando la regla 31 (elseHeader)
+
+
+Estado 122
 
     3 instructions: instructions . NEWINSTRUCTION instruction
-   36 control: controlHeader instructions ELSE error $@2 instructions . END
+   32 control: controlHeader instructions elseHeader instructions . END
+   35        | controlHeader instructions elseHeader instructions . error
 
-    END             desplazar e ir al estado 126
-    NEWINSTRUCTION  desplazar e ir al estado 50
+    error           desplazar e ir al estado 127
+    END             desplazar e ir al estado 128
+    NEWINSTRUCTION  desplazar e ir al estado 51
+
+
+Estado 123
+
+   45 loop: loopKeyword expression error $@3 . instructions END
+
+    WRITE       desplazar e ir al estado 1
+    RETURN      desplazar e ir al estado 2
+    WHILE       desplazar e ir al estado 3
+    IF          desplazar e ir al estado 4
+    IDENTIFIER  desplazar e ir al estado 5
+
+    $default  reduce usando la regla 11 (instruction)
+
+    instructions        ir al estado 129
+    instruction         ir al estado 8
+    return              ir al estado 9
+    assignment          ir al estado 10
+    bareFunctionCall    ir al estado 11
+    functionCall        ir al estado 12
+    writeCall           ir al estado 13
+    functionHeaderOpen  ir al estado 14
+    functionHeader      ir al estado 15
+    functionDefinition  ir al estado 16
+    controlHeader       ir al estado 17
+    control             ir al estado 18
+    loopKeyword         ir al estado 19
+    loopHeader          ir al estado 20
+    loop                ir al estado 21
 
 
 Estado 124
 
-   32 control: controlHeader instructions ELSE ':' instructions error .
+    3 instructions: instructions . NEWINSTRUCTION instruction
+   37 control: IF expression error $@1 instructions . END
 
-    $default  reduce usando la regla 32 (control)
+    END             desplazar e ir al estado 130
+    NEWINSTRUCTION  desplazar e ir al estado 51
 
 
 Estado 125
 
-   29 control: controlHeader instructions ELSE ':' instructions END .
+   26 definingParameter: definingParameter ',' TYPE IDENTIFIER .
 
-    $default  reduce usando la regla 29 (control)
+    $default  reduce usando la regla 26 (definingParameter)
 
 
 Estado 126
 
-   36 control: controlHeader instructions ELSE error $@2 instructions END .
+   39 control: controlHeader instructions ELSE error $@2 . instructions END
 
-    $default  reduce usando la regla 36 (control)
+    WRITE       desplazar e ir al estado 1
+    RETURN      desplazar e ir al estado 2
+    WHILE       desplazar e ir al estado 3
+    IF          desplazar e ir al estado 4
+    IDENTIFIER  desplazar e ir al estado 5
+
+    $default  reduce usando la regla 11 (instruction)
+
+    instructions        ir al estado 131
+    instruction         ir al estado 8
+    return              ir al estado 9
+    assignment          ir al estado 10
+    bareFunctionCall    ir al estado 11
+    functionCall        ir al estado 12
+    writeCall           ir al estado 13
+    functionHeaderOpen  ir al estado 14
+    functionHeader      ir al estado 15
+    functionDefinition  ir al estado 16
+    controlHeader       ir al estado 17
+    control             ir al estado 18
+    loopKeyword         ir al estado 19
+    loopHeader          ir al estado 20
+    loop                ir al estado 21
+
+
+Estado 127
+
+   35 control: controlHeader instructions elseHeader instructions error .
+
+    $default  reduce usando la regla 35 (control)
+
+
+Estado 128
+
+   32 control: controlHeader instructions elseHeader instructions END .
+
+    $default  reduce usando la regla 32 (control)
+
+
+Estado 129
+
+    3 instructions: instructions . NEWINSTRUCTION instruction
+   45 loop: loopKeyword expression error $@3 instructions . END
+
+    END             desplazar e ir al estado 132
+    NEWINSTRUCTION  desplazar e ir al estado 51
+
+
+Estado 130
+
+   37 control: IF expression error $@1 instructions END .
+
+    $default  reduce usando la regla 37 (control)
+
+
+Estado 131
+
+    3 instructions: instructions . NEWINSTRUCTION instruction
+   39 control: controlHeader instructions ELSE error $@2 instructions . END
+
+    END             desplazar e ir al estado 133
+    NEWINSTRUCTION  desplazar e ir al estado 51
+
+
+Estado 132
+
+   45 loop: loopKeyword expression error $@3 instructions END .
+
+    $default  reduce usando la regla 45 (loop)
+
+
+Estado 133
+
+   39 control: controlHeader instructions ELSE error $@2 instructions END .
+
+    $default  reduce usando la regla 39 (control)

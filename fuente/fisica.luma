@@ -1,7 +1,7 @@
 posX = 0.0
 posY = 0.0
-velX = 2.0
-velY = -1.0
+velX = 2.1
+velY = -1.2
 atractorX = -1.0
 atractorY = -1.0
 
@@ -15,14 +15,19 @@ actualizarEstado:
     posY = posY + velY
 fin
 mostrarEstado:
-    escribe posX + ", " + posY + "\n"
+    escribe "Posición: "
+    escribe posX
+    escribe ", " 
+    escribe posY 
+    escribe "\n"
 fin
 
-escribe “Introduzca el número de pasos de la simulación: ”
-pasos = lee
-escribe “\n”
-mientras pasos menor 100:
+escribe "Introduzca el número de pasos de la simulación: "
+pasos = lee entero
+escribe "\n"
+pasosActuales = 0
+mientras pasosActuales menor pasos:
     actualizarEstado
     mostrarEstado
-    pasos = pasos + 1
+    pasosActuales = pasosActuales + 1
 fin

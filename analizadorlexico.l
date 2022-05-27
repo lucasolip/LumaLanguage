@@ -1,6 +1,7 @@
 %{
 #include <stdio.h>
 #include <string.h>
+#include "types.c"
 #include "analizadorsintactico.tab.h"
 int line = 1;
 void yyerror(char*); 
@@ -30,10 +31,11 @@ mayorigual					return GREATEREQUAL;
 menorigual					return LESSEQUAL;
 Verdadero|verdadero|V		return VERDADERO;
 Falso|falso|F			    return FALSO;
+entero|decimal|caracter|booleano    {yylval.string=(char*)strdup(yytext);return TYPE;};
 {digit}+\.{digit}+			{yylval.floating=atof(yytext);return FLOAT;};
 {digit}+					{yylval.integer=atoi(yytext);return INTEGER;};
 \'.\'						{yylval.character=yytext[1];return CHARACTER;};
-\".*\"|“.*”					{yylval.string=(char*)strdup(yytext);return STRING;};
+\".*\"  					{yylval.string=(char*)strdup(yytext);return STRING;};
 {letter}{letdig}*			{yylval.identifier=(char*)strdup(yytext);return IDENTIFIER;};
 (\/\/.*\n)|(\/\*(.|\n)*\*\/)|[ \t]		// ignore
 .						yyerror("Caracter no válido\n");
