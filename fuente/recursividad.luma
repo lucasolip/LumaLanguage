@@ -1,0 +1,20 @@
+factorial(entero n):
+    si (n igual 0) o (n igual 1):
+        devuelve 1
+    fin
+    devuelve n*factorial(n-1)
+fin
+
+fibonacci(entero n):
+    si (n igual 0) o (n igual 1):
+        devuelve 1
+    fin
+    devuelve fibonacci(n-1) + fibonacci(n-2)
+fin
+
+i = 0
+mientras i menor 10:
+    escribe fibonacci(i) + factorial(i)
+    escribe "\n"
+    i = i + 1
+fin
