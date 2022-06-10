@@ -12,7 +12,7 @@ Los comentarios que el compilador ignora se escriben tras dos barras en una lín
 
      // Esto es un comentario 
      
-     \* Esto es
+     /* Esto es
      un bloque
      de comentarios */
 
